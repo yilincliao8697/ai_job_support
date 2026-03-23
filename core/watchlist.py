@@ -1,6 +1,8 @@
+import json
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Optional
 
 
 @dataclass
@@ -10,12 +12,24 @@ class WatchlistCompany:
     company_name: str
     notes: str
     added_at: str
+    pulse_json: Optional[str] = None
+    pulse_updated_at: Optional[str] = None
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def migrate_watchlist(db_path: str) -> None:
+    """Add pulse columns to watchlist table if they don't exist (idempotent)."""
+    with _connect(db_path) as conn:
+        cols = {row["name"] for row in conn.execute("PRAGMA table_info(watchlist)").fetchall()}
+        if "pulse_json" not in cols:
+            conn.execute("ALTER TABLE watchlist ADD COLUMN pulse_json TEXT")
+        if "pulse_updated_at" not in cols:
+            conn.execute("ALTER TABLE watchlist ADD COLUMN pulse_updated_at TEXT")
 
 
 def add_company(db_path: str, company_name: str, notes: str = "") -> int:
@@ -51,3 +65,24 @@ def update_company_notes(db_path: str, company_id: int, notes: str) -> None:
             "UPDATE watchlist SET notes = ? WHERE id = ?",
             (notes, company_id),
         )
+
+
+def save_pulse(db_path: str, company_id: int, pulse_data: dict) -> None:
+    """Persist a CompanyPulse result as JSON against a watchlist company."""
+    updated_at = datetime.now().isoformat()
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE watchlist SET pulse_json = ?, pulse_updated_at = ? WHERE id = ?",
+            (json.dumps(pulse_data), updated_at, company_id),
+        )
+
+
+def load_pulse(db_path: str, company_id: int) -> Optional[dict]:
+    """Load a cached CompanyPulse dict for a watchlist company, or None if not stored."""
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT pulse_json FROM watchlist WHERE id = ?", (company_id,)
+        ).fetchone()
+    if row and row["pulse_json"]:
+        return json.loads(row["pulse_json"])
+    return None

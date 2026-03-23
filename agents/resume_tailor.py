@@ -10,6 +10,16 @@ load_dotenv()
 MODEL = "claude-sonnet-4-6"
 
 
+def _strip_code_fences(text: str) -> str:
+    """Strip markdown code fences from a string if present."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1]
+        if text.endswith("```"):
+            text = text.rsplit("```", 1)[0]
+    return text.strip()
+
+
 @dataclass
 class TailoredCV:
     """A CV tailored to a specific job description."""
@@ -102,7 +112,7 @@ JOB DESCRIPTION:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    raw = message.content[0].text.strip()
+    raw = _strip_code_fences(message.content[0].text)
 
     try:
         data = json.loads(raw)

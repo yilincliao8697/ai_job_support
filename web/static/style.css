@@ -208,7 +208,7 @@ tr:last-child td { border-bottom: none; }
 
 /* HTMX loading indicator */
 .htmx-indicator { display: none; }
-.htmx-request .htmx-indicator { display: inline; }
+.htmx-indicator.htmx-request { display: inline; }
 
 /* Collapsible (details/summary) */
 details { border-bottom: 1px solid #e5e5e5; padding: 0.75rem 0; }

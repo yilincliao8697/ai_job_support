@@ -10,6 +10,16 @@ load_dotenv()
 MODEL = "claude-sonnet-4-6"
 
 
+def _strip_code_fences(text: str) -> str:
+    """Strip markdown code fences from a string if present."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1]  # drop opening fence line
+        if text.endswith("```"):
+            text = text.rsplit("```", 1)[0]
+    return text.strip()
+
+
 @dataclass
 class SimilarCompany:
     """A company similar to the one in the job posting."""
@@ -60,7 +70,7 @@ JOB POSTING:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    raw = message.content[0].text.strip()
+    raw = _strip_code_fences(message.content[0].text)
 
     try:
         data = json.loads(raw)
@@ -101,21 +111,40 @@ Use web search to find current information. Then return ONLY valid JSON — no m
         }
     ]
 
-    message = _client().messages.create(
+    client = _client()
+    messages = [{"role": "user", "content": prompt}]
+
+    message = client.messages.create(
         model=MODEL,
         max_tokens=1500,
         tools=tools,
-        messages=[{"role": "user", "content": prompt}],
+        messages=messages,
     )
 
-    # Extract the final text response (Claude may have made tool calls before this)
+    # If Claude stopped after tool use without emitting a text block,
+    # send the result back and ask for the final JSON synthesis.
     raw = ""
     for block in message.content:
         if hasattr(block, "text"):
             raw = block.text.strip()
 
+    if not raw and message.stop_reason == "end_turn":
+        messages.append({"role": "assistant", "content": message.content})
+        messages.append({"role": "user", "content": "Now synthesize your findings into the JSON format specified."})
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=1500,
+            tools=tools,
+            messages=messages,
+        )
+        for block in message.content:
+            if hasattr(block, "text"):
+                raw = block.text.strip()
+
     if not raw:
         raise ValueError("Claude returned no text response after web search")
+
+    raw = _strip_code_fences(raw)
 
     try:
         data = json.loads(raw)

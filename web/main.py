@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 
 from agents.market_intelligence import expand_companies, get_company_pulse
-from core.watchlist import add_company, list_companies, remove_company
+from core.watchlist import add_company, list_companies, remove_company, save_pulse, load_pulse, migrate_watchlist
 from agents.wellbeing import (
     get_encouragement_on_log, get_reframe_on_hard_status,
     get_one_thing_today, get_on_demand_encouragement,
@@ -38,6 +38,7 @@ templates = Jinja2Templates(directory="web/templates")
 
 # Initialise DB on startup
 init_db(DB_PATH)
+migrate_watchlist(DB_PATH)
 
 
 # ---------------------------------------------------------------------------
@@ -247,13 +248,18 @@ async def watchlist_add(request: Request, company_name: str = Form(...)):
 
 @app.get("/companies/{company_id}")
 async def company_pulse_page(request: Request, company_id: int):
-    """Render the Company Pulse page for a watchlist company."""
+    """Render the Company Pulse page, loading cached pulse if available."""
     companies = list_companies(DB_PATH)
     company = next((c for c in companies if c.id == company_id), None)
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
+    cached = load_pulse(DB_PATH, company_id)
+    pulse = None
+    if cached:
+        from agents.market_intelligence import CompanyPulse
+        pulse = CompanyPulse(**cached)
     return templates.TemplateResponse(
-        request, "companies/pulse.html", {"company": company, "pulse": None}
+        request, "companies/pulse.html", {"company": company, "pulse": pulse}
     )
 
 
@@ -264,10 +270,14 @@ async def company_pulse_refresh(request: Request, company_id: int):
     company = next((c for c in companies if c.id == company_id), None)
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
-    pulse = get_company_pulse(company.company_name)
-    return templates.TemplateResponse(
-        request, "partials/pulse_content.html", {"pulse": pulse}
-    )
+    try:
+        pulse = get_company_pulse(company.company_name)
+        save_pulse(DB_PATH, company_id, pulse.__dict__)
+        return templates.TemplateResponse(
+            request, "partials/pulse_content.html", {"pulse": pulse}
+        )
+    except Exception as e:
+        return f"<p class='text-muted'>Could not load pulse: {e}</p>"
 
 
 @app.post("/companies/{company_id}/delete")

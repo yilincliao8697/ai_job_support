@@ -10,15 +10,23 @@
 
 <div class="card">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-    <h2 style="margin: 0;">Company Pulse</h2>
-    <button class="btn btn-primary"
-            hx-post="/companies/{{ company.id }}/pulse"
-            hx-target="#pulse-content"
-            hx-swap="innerHTML"
-            hx-indicator="#pulse-loading">
-      Refresh pulse
-    </button>
-    <span id="pulse-loading" class="htmx-indicator text-muted" style="font-size:0.85rem;">Researching… may take 20–30 seconds.</span>
+    <div>
+      <h2 style="margin: 0;">Company Pulse</h2>
+      {% if company.pulse_updated_at %}
+      <p class="text-muted" style="margin:0; font-size:0.8rem;">Last updated {{ company.pulse_updated_at[:10] }}</p>
+      {% endif %}
+    </div>
+    <div class="flex gap-1 align-center">
+      <button class="btn btn-primary"
+              hx-post="/companies/{{ company.id }}/pulse"
+              hx-target="#pulse-content"
+              hx-swap="innerHTML"
+              hx-indicator="#pulse-loading"
+              hx-disabled-elt="this">
+        Refresh pulse
+      </button>
+      <span id="pulse-loading" class="htmx-indicator text-muted" style="font-size:0.85rem;">Researching… may take 20–30 seconds.</span>
+    </div>
   </div>
 
   <div id="pulse-content">
