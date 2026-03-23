@@ -1,9 +1,13 @@
 <div class="card" style="margin-top: 1rem;">
   <h2 style="margin-top:0;">Resume generated</h2>
   <p><strong>{{ target_role }}</strong> at <strong>{{ target_company }}</strong></p>
-  <div class="flex gap-1 mt-2">
+  <div class="flex gap-1 mt-2" style="flex-wrap: wrap;">
     <a href="/resume/download/{{ filename }}" class="btn btn-primary" download>Download PDF</a>
-    <a href="/applications/new?company={{ target_company | urlencode }}&role={{ target_role | urlencode }}&resume={{ filename | urlencode }}"
+    <a href="/resume/view/{{ filename }}" target="_blank" class="btn btn-secondary">Preview</a>
+    <a href="/applications/new?company={{ target_company | urlencode }}&role={{ target_role | urlencode }}&resume={{ filename | urlencode }}&resume_id={{ resume_id }}"
        class="btn btn-secondary">Log this application</a>
   </div>
+  <p style="margin: 0.75rem 0 0; font-size: 0.85rem;">
+    <a href="/resume/history">View all resumes →</a>
+  </p>
 </div>

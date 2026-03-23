@@ -1,6 +1,7 @@
 import json
 import os
 from dataclasses import dataclass, field
+from typing import Optional
 
 import anthropic
 from dotenv import load_dotenv
@@ -11,12 +12,16 @@ MODEL = "claude-sonnet-4-6"
 
 
 def _strip_code_fences(text: str) -> str:
-    """Strip markdown code fences from a string if present."""
+    """Extract JSON from a response that may contain markdown code fences or preamble text."""
     text = text.strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[-1]  # drop opening fence line
-        if text.endswith("```"):
-            text = text.rsplit("```", 1)[0]
+    # Find the first ``` fence anywhere in the text (handles preamble sentences)
+    fence_start = text.find("```")
+    if fence_start != -1:
+        text = text[fence_start:]
+        text = text.split("\n", 1)[-1]  # drop the opening fence line (```json etc.)
+        fence_end = text.rfind("```")
+        if fence_end != -1:
+            text = text[:fence_end]
     return text.strip()
 
 
@@ -25,6 +30,7 @@ class SimilarCompany:
     """A company similar to the one in the job posting."""
     name: str
     reason: str
+    sector: Optional[str] = None
 
 
 @dataclass
@@ -57,9 +63,11 @@ Focus on: company stage, tech stack, domain, and team size. Return companies the
 
 Return ONLY valid JSON — no markdown, no explanation:
 [
-  {{"name": "Company Name", "reason": "One line: stage, domain focus, why similar"}},
+  {{"name": "Company Name", "reason": "One line: stage, domain focus, why similar", "sector": "Fintech"}},
   ...
 ]
+
+The "sector" field should be a short plain-English category inferred from the company's domain (e.g. "Fintech", "Health", "Infra", "LLM Tooling", "Developer Tools"). Use null if you cannot confidently infer a sector.
 
 JOB POSTING:
 {job_description}
@@ -80,7 +88,10 @@ JOB POSTING:
     if not isinstance(data, list):
         raise ValueError(f"Expected a JSON list, got: {type(data)}")
 
-    return [SimilarCompany(name=item["name"], reason=item["reason"]) for item in data]
+    return [
+        SimilarCompany(name=item["name"], reason=item["reason"], sector=item.get("sector"))
+        for item in data
+    ]
 
 
 def get_company_pulse(company_name: str) -> CompanyPulse:

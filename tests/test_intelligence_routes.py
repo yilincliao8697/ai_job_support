@@ -108,10 +108,30 @@ def test_company_pulse_refresh_returns_pulse_fields(mock_wc, mock_pulse, setup):
 
 
 @patch("agents.wellbeing._client")
-def test_company_delete_redirects(mock_wc, setup):
+def test_company_delete_returns_200(mock_wc, setup):
     mock_wc.return_value.messages.create.return_value = _mock_wellbeing()
     db, main_module = setup
     company_id = add_company(db, "Cohere")
     client = TestClient(main_module.app)
-    response = client.post(f"/companies/{company_id}/delete", follow_redirects=False)
-    assert response.status_code == 303
+    response = client.post(f"/companies/{company_id}/delete")
+    assert response.status_code == 200
+
+
+@patch("agents.wellbeing._client")
+def test_watchlist_add_with_sector_stores_sector(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_wellbeing()
+    db, main_module = setup
+    client = TestClient(main_module.app)
+    client.post("/intelligence/watchlist/add", data={"company_name": "Stripe", "sector": "Fintech"})
+    from core.watchlist import list_companies
+    companies = list_companies(db)
+    stripe = next(c for c in companies if c.company_name == "Stripe")
+    assert stripe.sector == "Fintech"
+
+
+@patch("agents.wellbeing._client")
+def test_watchlist_add_without_sector_succeeds(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_wellbeing()
+    client = make_client(setup)
+    response = client.post("/intelligence/watchlist/add", data={"company_name": "Cohere"})
+    assert response.status_code == 200

@@ -38,6 +38,8 @@
     <label for="notes">Notes</label>
     <textarea id="notes" name="notes">{{ app.notes if app else '' }}</textarea>
 
+    {% if resume_id %}<input type="hidden" name="resume_id" value="{{ resume_id }}">{% endif %}
+
     <div class="flex gap-1">
       <button type="submit" class="btn btn-primary">Save application</button>
       <a href="/applications" class="btn btn-secondary">Cancel</a>

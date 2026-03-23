@@ -7,3 +7,4 @@ pyyaml
 weasyprint
 pytest
 httpx
+python-multipart

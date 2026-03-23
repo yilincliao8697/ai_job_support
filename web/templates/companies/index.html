@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Companies — AI Job Support{% endblock %}
+
+{% block content %}
+<h1>Companies</h1>
+
+{% if grouped %}
+  {% for sector, companies in grouped.items() %}
+  <details open>
+    <summary>{{ sector }} ({{ companies|length }})</summary>
+    <div style="margin-top: 0.75rem;">
+      {% for company in companies %}
+        {% include "companies/company_card.html" %}
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+{% else %}
+  <p class="text-muted">No companies yet. Add some from the <a href="/intelligence">Intelligence</a> page.</p>
+{% endif %}
+{% endblock %}

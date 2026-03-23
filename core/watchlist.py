@@ -14,6 +14,9 @@ class WatchlistCompany:
     added_at: str
     pulse_json: Optional[str] = None
     pulse_updated_at: Optional[str] = None
+    sector: Optional[str] = None
+    website_url: Optional[str] = None
+    careers_url: Optional[str] = None
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
@@ -23,22 +26,28 @@ def _connect(db_path: str) -> sqlite3.Connection:
 
 
 def migrate_watchlist(db_path: str) -> None:
-    """Add pulse columns to watchlist table if they don't exist (idempotent)."""
+    """Add optional columns to watchlist table if they don't exist (idempotent)."""
     with _connect(db_path) as conn:
         cols = {row["name"] for row in conn.execute("PRAGMA table_info(watchlist)").fetchall()}
-        if "pulse_json" not in cols:
-            conn.execute("ALTER TABLE watchlist ADD COLUMN pulse_json TEXT")
-        if "pulse_updated_at" not in cols:
-            conn.execute("ALTER TABLE watchlist ADD COLUMN pulse_updated_at TEXT")
+        for col in ("pulse_json", "pulse_updated_at", "sector", "website_url", "careers_url"):
+            if col not in cols:
+                conn.execute(f"ALTER TABLE watchlist ADD COLUMN {col} TEXT")
 
 
-def add_company(db_path: str, company_name: str, notes: str = "") -> int:
+def add_company(
+    db_path: str,
+    company_name: str,
+    notes: str = "",
+    sector: Optional[str] = None,
+    website_url: Optional[str] = None,
+    careers_url: Optional[str] = None,
+) -> int:
     """Add a company to the watchlist and return its id."""
     added_at = datetime.now().isoformat()
     with _connect(db_path) as conn:
         cursor = conn.execute(
-            "INSERT INTO watchlist (company_name, notes, added_at) VALUES (?, ?, ?)",
-            (company_name, notes, added_at),
+            "INSERT INTO watchlist (company_name, notes, added_at, sector, website_url, careers_url) VALUES (?, ?, ?, ?, ?, ?)",
+            (company_name, notes, added_at, sector, website_url, careers_url),
         )
         return cursor.lastrowid
 
@@ -65,6 +74,52 @@ def update_company_notes(db_path: str, company_id: int, notes: str) -> None:
             "UPDATE watchlist SET notes = ? WHERE id = ?",
             (notes, company_id),
         )
+
+
+def update_company_details(
+    db_path: str,
+    company_id: int,
+    sector: Optional[str] = None,
+    website_url: Optional[str] = None,
+    careers_url: Optional[str] = None,
+) -> None:
+    """Update sector, website_url, and careers_url for a watchlist company.
+
+    Only updates fields that are explicitly passed as non-None values.
+    """
+    updates = {}
+    if sector is not None:
+        updates["sector"] = sector
+    if website_url is not None:
+        updates["website_url"] = website_url
+    if careers_url is not None:
+        updates["careers_url"] = careers_url
+    if not updates:
+        return
+    set_clause = ", ".join(f"{col} = ?" for col in updates)
+    values = list(updates.values()) + [company_id]
+    with _connect(db_path) as conn:
+        conn.execute(f"UPDATE watchlist SET {set_clause} WHERE id = ?", values)
+
+
+def list_companies_by_sector(db_path: str) -> dict[str, list[WatchlistCompany]]:
+    """Return all watchlist companies grouped by sector.
+
+    Companies with no sector are grouped under the key "Uncategorised".
+    Sectors are sorted alphabetically; "Uncategorised" is always last.
+    Companies within each sector are sorted alphabetically by company_name.
+    """
+    companies = list_companies(db_path)
+    grouped: dict[str, list[WatchlistCompany]] = {}
+    for company in companies:
+        key = company.sector or "Uncategorised"
+        grouped.setdefault(key, []).append(company)
+    for key in grouped:
+        grouped[key].sort(key=lambda c: c.company_name.lower())
+    sorted_keys = sorted(k for k in grouped if k != "Uncategorised")
+    if "Uncategorised" in grouped:
+        sorted_keys.append("Uncategorised")
+    return {k: grouped[k] for k in sorted_keys}
 
 
 def save_pulse(db_path: str, company_id: int, pulse_data: dict) -> None:

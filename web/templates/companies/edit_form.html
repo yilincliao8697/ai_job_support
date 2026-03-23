@@ -1,0 +1,33 @@
+<div id="company-card-{{ company.id }}" class="card" style="margin-bottom: 0.75rem;">
+  <strong>{{ company.company_name }}</strong>
+
+  <form hx-post="/companies/{{ company.id }}/details"
+        hx-target="#company-card-{{ company.id }}"
+        hx-swap="outerHTML"
+        style="margin-top: 0.75rem;">
+
+    <label for="sector-{{ company.id }}">Sector</label>
+    <input type="text" id="sector-{{ company.id }}" name="sector"
+           value="{{ company.sector or '' }}"
+           placeholder="e.g. Fintech, Health, Infra">
+
+    <label for="website-{{ company.id }}">Website URL</label>
+    <input type="text" id="website-{{ company.id }}" name="website_url"
+           value="{{ company.website_url or '' }}"
+           placeholder="https://example.com">
+
+    <label for="careers-{{ company.id }}">Careers URL</label>
+    <input type="text" id="careers-{{ company.id }}" name="careers_url"
+           value="{{ company.careers_url or '' }}"
+           placeholder="https://example.com/jobs">
+
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="submit" class="btn btn-primary" style="font-size: 0.85rem;">Save</button>
+      <button type="button" class="btn btn-secondary"
+              style="font-size: 0.85rem;"
+              hx-get="/companies/{{ company.id }}/card"
+              hx-target="#company-card-{{ company.id }}"
+              hx-swap="outerHTML">Cancel</button>
+    </div>
+  </form>
+</div>

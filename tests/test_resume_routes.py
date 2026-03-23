@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from agents.resume_tailor import TailoredCV
 from core.tracker import init_db
+from core.resume_store import record_resume
 
 
 SAMPLE_TAILORED_CV = TailoredCV(
@@ -115,3 +116,105 @@ def test_applications_new_prefill_from_query_params(mock_wc, setup):
     assert response.status_code == 200
     assert "Cohere" in response.text
     assert "ML Engineer" in response.text
+
+
+# ---------------------------------------------------------------------------
+# /resume/view
+# ---------------------------------------------------------------------------
+
+@patch("agents.wellbeing._client")
+def test_resume_view_returns_200_with_pdf_content_type(mock_wc, setup, tmp_path):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    _, resumes_dir, main_module = setup
+    os.makedirs(resumes_dir, exist_ok=True)
+    pdf_path = os.path.join(resumes_dir, "test_resume.pdf")
+    with open(pdf_path, "wb") as f:
+        f.write(b"%PDF-1.4 test content")
+    client = TestClient(main_module.app)
+    response = client.get("/resume/view/test_resume.pdf")
+    assert response.status_code == 200
+    assert "application/pdf" in response.headers["content-type"]
+
+
+@patch("agents.wellbeing._client")
+def test_resume_view_content_disposition_is_inline(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    _, resumes_dir, main_module = setup
+    os.makedirs(resumes_dir, exist_ok=True)
+    with open(os.path.join(resumes_dir, "test_resume.pdf"), "wb") as f:
+        f.write(b"%PDF-1.4 test content")
+    client = TestClient(main_module.app)
+    response = client.get("/resume/view/test_resume.pdf")
+    assert "inline" in response.headers.get("content-disposition", "")
+
+
+@patch("agents.wellbeing._client")
+def test_resume_view_404_for_missing(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    client = make_client(setup)
+    response = client.get("/resume/view/nonexistent.pdf")
+    assert response.status_code == 404
+
+
+@patch("agents.wellbeing._client")
+def test_resume_view_rejects_path_traversal(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    client = make_client(setup)
+    response = client.get("/resume/view/..%2F..%2Fetc%2Fpasswd")
+    assert response.status_code in (400, 404)
+
+
+# ---------------------------------------------------------------------------
+# /resume/history
+# ---------------------------------------------------------------------------
+
+@patch("agents.wellbeing._client")
+def test_resume_history_returns_200(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    client = make_client(setup)
+    response = client.get("/resume/history")
+    assert response.status_code == 200
+
+
+@patch("agents.wellbeing._client")
+def test_resume_history_renders_records(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    record_resume(db, "stripe_2026.pdf", "Stripe", "ML Engineer")
+    record_resume(db, "cohere_2026.pdf", "Cohere", "AI Engineer")
+    client = TestClient(main_module.app)
+    response = client.get("/resume/history")
+    assert response.status_code == 200
+    assert "Stripe" in response.text
+    assert "ML Engineer" in response.text
+    assert "Cohere" in response.text
+
+
+# ---------------------------------------------------------------------------
+# /resume/preview-frame
+# ---------------------------------------------------------------------------
+
+@patch("agents.wellbeing._client")
+def test_resume_preview_frame_returns_200_with_iframe(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    client = make_client(setup)
+    response = client.get("/resume/preview-frame/test_resume.pdf")
+    assert response.status_code == 200
+    assert "<iframe" in response.text
+
+
+# ---------------------------------------------------------------------------
+# /resume/history/{id}/delete
+# ---------------------------------------------------------------------------
+
+@patch("agents.wellbeing._client")
+def test_resume_history_delete_removes_record_and_returns_rows(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    resume_id = record_resume(db, "stripe_2026.pdf", "Stripe", "ML Engineer")
+    client = TestClient(main_module.app)
+    response = client.post(f"/resume/history/{resume_id}/delete")
+    assert response.status_code == 200
+    # Record should be gone
+    from core.resume_store import get_resume
+    assert get_resume(db, resume_id) is None

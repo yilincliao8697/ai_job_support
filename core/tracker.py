@@ -64,10 +64,15 @@ def init_db(db_path: str) -> None:
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS watchlist (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                company_name TEXT NOT NULL UNIQUE,
-                notes        TEXT DEFAULT '',
-                added_at     TEXT NOT NULL
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_name     TEXT NOT NULL UNIQUE,
+                notes            TEXT DEFAULT '',
+                added_at         TEXT NOT NULL,
+                pulse_json       TEXT,
+                pulse_updated_at TEXT,
+                sector           TEXT,
+                website_url      TEXT,
+                careers_url      TEXT
             )
         """)
 

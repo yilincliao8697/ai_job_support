@@ -1,0 +1,44 @@
+<div id="company-card-{{ company.id }}" class="card" style="margin-bottom: 0.75rem;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+    <div>
+      <strong><a href="/companies/{{ company.id }}">{{ company.company_name }}</a></strong>
+    </div>
+    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+      <button class="btn btn-secondary"
+              style="font-size: 0.8rem; padding: 0.25rem 0.6rem;"
+              hx-get="/companies/{{ company.id }}/edit-form"
+              hx-target="#company-card-{{ company.id }}"
+              hx-swap="outerHTML">Edit</button>
+      <button class="btn btn-danger"
+              style="font-size: 0.8rem; padding: 0.25rem 0.6rem;"
+              hx-post="/companies/{{ company.id }}/delete"
+              hx-target="#company-card-{{ company.id }}"
+              hx-swap="outerHTML"
+              hx-confirm="Remove {{ company.company_name }} from your watchlist?">Remove</button>
+    </div>
+  </div>
+
+  <div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.85rem;">
+    {% if company.sector %}
+      <span class="badge" style="background: #e8f0fe; color: #3b6fd4;">{{ company.sector }}</span>
+    {% else %}
+      <span class="text-muted">No sector</span>
+    {% endif %}
+
+    {% if company.website_url %}
+      <a href="{{ company.website_url }}" target="_blank" rel="noopener">Website</a>
+    {% endif %}
+
+    {% if company.careers_url %}
+      <a href="{{ company.careers_url }}" target="_blank" rel="noopener">Careers</a>
+    {% endif %}
+  </div>
+
+  <div style="margin-top: 0.4rem; font-size: 0.8rem;" class="text-muted">
+    {% if company.pulse_updated_at %}
+      Last updated {{ company.pulse_updated_at|format_date }}
+    {% else %}
+      No pulse yet
+    {% endif %}
+  </div>
+</div>

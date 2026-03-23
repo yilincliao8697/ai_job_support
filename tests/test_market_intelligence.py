@@ -6,9 +6,9 @@ from agents.market_intelligence import expand_companies, get_company_pulse, Simi
 SAMPLE_JD = "We are hiring an ML Engineer at Cohere to work on LLM infrastructure."
 
 VALID_EXPANDER_RESPONSE = json.dumps([
-    {"name": "Mistral AI", "reason": "Series A, LLM focus, similar eng team size"},
-    {"name": "Together AI", "reason": "Series B, LLM infra, open-source focus"},
-    {"name": "Anyscale", "reason": "Series C, distributed ML, Python-heavy"},
+    {"name": "Mistral AI", "reason": "Series A, LLM focus, similar eng team size", "sector": "LLM Tooling"},
+    {"name": "Together AI", "reason": "Series B, LLM infra, open-source focus", "sector": "LLM Tooling"},
+    {"name": "Anyscale", "reason": "Series C, distributed ML, Python-heavy", "sector": "Infra"},
 ])
 
 VALID_PULSE_RESPONSE = json.dumps({
@@ -69,6 +69,24 @@ def test_expand_companies_raises_if_not_list(mock_client):
     mock_client.return_value.messages.create.return_value = _mock_response('{"name": "Foo"}')
     with pytest.raises(ValueError, match="JSON list"):
         expand_companies(SAMPLE_JD)
+
+
+@patch("agents.market_intelligence._client")
+def test_expand_companies_returns_sector(mock_client):
+    mock_client.return_value.messages.create.return_value = _mock_response(VALID_EXPANDER_RESPONSE)
+    result = expand_companies(SAMPLE_JD)
+    assert result[0].sector == "LLM Tooling"
+    assert result[2].sector == "Infra"
+
+
+@patch("agents.market_intelligence._client")
+def test_expand_companies_handles_missing_sector(mock_client):
+    no_sector = json.dumps([
+        {"name": "Mistral AI", "reason": "LLM focus"},
+    ])
+    mock_client.return_value.messages.create.return_value = _mock_response(no_sector)
+    result = expand_companies(SAMPLE_JD)
+    assert result[0].sector is None
 
 
 # ---------------------------------------------------------------------------

@@ -8,7 +8,11 @@ from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 
 from agents.market_intelligence import expand_companies, get_company_pulse
-from core.watchlist import add_company, list_companies, remove_company, save_pulse, load_pulse, migrate_watchlist
+from core.watchlist import (
+    add_company, list_companies, list_companies_by_sector,
+    remove_company, save_pulse, load_pulse, migrate_watchlist,
+    update_company_details,
+)
 from agents.wellbeing import (
     get_encouragement_on_log, get_reframe_on_hard_status,
     get_one_thing_today, get_on_demand_encouragement,
@@ -21,8 +25,25 @@ from core.tracker import (
     update_status, update_application, delete_application,
     get_application_counts_by_date, ApplicationIn, ApplicationUpdate,
 )
+from core.resume_store import (
+    init_resumes_table, record_resume, link_application,
+    list_resumes, delete_resume_record,
+)
 
 load_dotenv()
+
+from datetime import datetime as _datetime
+
+
+def _format_date(value: str) -> str:
+    """Jinja2 filter: format an ISO datetime string as 'Jan 15, 2025'."""
+    if not value:
+        return ""
+    try:
+        return _datetime.fromisoformat(value).strftime("%b %d, %Y")
+    except (ValueError, TypeError):
+        return value[:10]
+
 
 DB_PATH = os.getenv("DB_PATH", "data/jobs.db")
 CV_PATH = os.getenv("CV_PATH", "data/master_cv.yaml")
@@ -39,6 +60,9 @@ templates = Jinja2Templates(directory="web/templates")
 # Initialise DB on startup
 init_db(DB_PATH)
 migrate_watchlist(DB_PATH)
+init_resumes_table(DB_PATH)
+
+templates.env.filters["format_date"] = _format_date
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +114,7 @@ async def applications_new_form(
     company: str = "",
     role: str = "",
     resume: str = "",
+    resume_id: int = 0,
 ):
     """Render new application form, optionally pre-filled from query params."""
     return templates.TemplateResponse(
@@ -102,6 +127,7 @@ async def applications_new_form(
             "prefill_company": company,
             "prefill_role": role,
             "prefill_resume": resume,
+            "resume_id": resume_id,
         },
     )
 
@@ -117,6 +143,7 @@ async def applications_new_submit(
     notes: str = Form(""),
     resume_filename: str = Form(""),
     referral_contacts: str = Form(""),
+    resume_id: int = Form(0),
 ):
     """Create a new application."""
     new_app = ApplicationIn(
@@ -129,7 +156,9 @@ async def applications_new_submit(
         resume_filename=resume_filename,
         referral_contacts=referral_contacts,
     )
-    add_application(DB_PATH, new_app)
+    application_id = add_application(DB_PATH, new_app)
+    if resume_id:
+        link_application(DB_PATH, resume_id, application_id)
     encouragement = get_encouragement_on_log(company, role_title, USER_BACKGROUND)
     return templates.TemplateResponse(
         request,
@@ -234,10 +263,14 @@ async def intelligence_expand(request: Request, job_description: str = Form(...)
 
 
 @app.post("/intelligence/watchlist/add")
-async def watchlist_add(request: Request, company_name: str = Form(...)):
+async def watchlist_add(
+    request: Request,
+    company_name: str = Form(...),
+    sector: str = Form(""),
+):
     """Add a company to the watchlist and return updated watchlist partial."""
     try:
-        add_company(DB_PATH, company_name)
+        add_company(DB_PATH, company_name, sector=sector or None)
     except Exception:
         pass  # ignore duplicate inserts
     companies = list_companies(DB_PATH)
@@ -280,11 +313,69 @@ async def company_pulse_refresh(request: Request, company_id: int):
         return f"<p class='text-muted'>Could not load pulse: {e}</p>"
 
 
+@app.get("/companies")
+async def companies_index(request: Request):
+    """Browse all watchlist companies grouped by sector."""
+    grouped = list_companies_by_sector(DB_PATH)
+    return templates.TemplateResponse(
+        request, "companies/index.html", {"grouped": grouped}
+    )
+
+
+@app.get("/companies/{company_id}/edit-form")
+async def company_edit_form(request: Request, company_id: int):
+    """Return the inline edit form partial for a company card."""
+    companies = list_companies(DB_PATH)
+    company = next((c for c in companies if c.id == company_id), None)
+    if company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return templates.TemplateResponse(
+        request, "companies/edit_form.html", {"company": company}
+    )
+
+
+@app.post("/companies/{company_id}/details")
+async def company_update_details(
+    request: Request,
+    company_id: int,
+    sector: str = Form(""),
+    website_url: str = Form(""),
+    careers_url: str = Form(""),
+):
+    """Update sector and URLs for a company. Returns the updated card partial."""
+    update_company_details(
+        DB_PATH,
+        company_id,
+        sector=sector or None,
+        website_url=website_url or None,
+        careers_url=careers_url or None,
+    )
+    companies = list_companies(DB_PATH)
+    company = next((c for c in companies if c.id == company_id), None)
+    if company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return templates.TemplateResponse(
+        request, "companies/company_card.html", {"company": company}
+    )
+
+
+@app.get("/companies/{company_id}/card")
+async def company_card(request: Request, company_id: int):
+    """Return the company card partial (used to restore after cancel)."""
+    companies = list_companies(DB_PATH)
+    company = next((c for c in companies if c.id == company_id), None)
+    if company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return templates.TemplateResponse(
+        request, "companies/company_card.html", {"company": company}
+    )
+
+
 @app.post("/companies/{company_id}/delete")
 async def company_delete(company_id: int):
-    """Remove a company from the watchlist."""
+    """Remove a company from the watchlist. Returns empty content for HTMX swap."""
     remove_company(DB_PATH, company_id)
-    return RedirectResponse("/intelligence", status_code=303)
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -303,11 +394,13 @@ async def resume_generate(request: Request, job_description: str = Form(...)):
     cv_text = get_cv_as_text(CV_PATH)
     tailored = tailor_cv(cv_text, job_description)
     filename = render_resume_pdf(tailored, RESUMES_DIR)
+    resume_id = record_resume(DB_PATH, filename, tailored.target_company, tailored.target_role)
     return templates.TemplateResponse(
         request,
         "partials/resume_result.html",
         {
             "filename": filename,
+            "resume_id": resume_id,
             "target_role": tailored.target_role,
             "target_company": tailored.target_company,
         },
@@ -317,13 +410,59 @@ async def resume_generate(request: Request, job_description: str = Form(...)):
 @app.get("/resume/download/{filename}")
 async def resume_download(filename: str):
     """Serve a generated resume PDF for download."""
-    file_path = os.path.join(RESUMES_DIR, filename)
+    safe_name = os.path.basename(filename)
+    if safe_name != filename or not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    file_path = os.path.join(RESUMES_DIR, safe_name)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Resume not found")
     return FileResponse(
         file_path,
         media_type="application/pdf",
-        filename=filename,
+        filename=safe_name,
+    )
+
+
+@app.get("/resume/view/{filename}")
+async def resume_view(filename: str):
+    """Serve a generated resume PDF for inline browser preview (no download prompt)."""
+    safe_name = os.path.basename(filename)
+    if safe_name != filename or not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    file_path = os.path.join(RESUMES_DIR, safe_name)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return FileResponse(
+        file_path,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{safe_name}"'},
+    )
+
+
+@app.get("/resume/history")
+async def resume_history_page(request: Request):
+    """Render the resume history page."""
+    resumes = list_resumes(DB_PATH)
+    return templates.TemplateResponse(
+        request, "resume_history.html", {"resumes": resumes}
+    )
+
+
+@app.get("/resume/preview-frame/{filename}")
+async def resume_preview_frame(request: Request, filename: str):
+    """Return an iframe partial for inline PDF preview."""
+    return templates.TemplateResponse(
+        request, "partials/resume_preview_frame.html", {"filename": filename}
+    )
+
+
+@app.post("/resume/history/{resume_id}/delete")
+async def resume_history_delete(request: Request, resume_id: int):
+    """Delete a resume DB record (does not delete the PDF file). Returns updated history table body."""
+    delete_resume_record(DB_PATH, resume_id)
+    resumes = list_resumes(DB_PATH)
+    return templates.TemplateResponse(
+        request, "partials/resume_history_rows.html", {"resumes": resumes}
     )
 
 
