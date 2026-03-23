@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Application Logged — AI Job Support{% endblock %}
+
+{% block content %}
+<h1>Application logged</h1>
+<div class="card">
+  <p><strong>{{ company }}</strong> — {{ role_title }}</p>
+  {% if encouragement %}
+  <p style="margin-top: 1rem; line-height: 1.7; color: #3b5998;">{{ encouragement }}</p>
+  {% endif %}
+  <div class="flex gap-1 mt-2">
+    <a href="/applications" class="btn btn-primary">View applications</a>
+    <a href="/applications/new" class="btn btn-secondary">Add another</a>
+  </div>
+</div>
+{% endblock %}

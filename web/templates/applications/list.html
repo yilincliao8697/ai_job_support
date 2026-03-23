@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Applications — AI Job Support{% endblock %}
+
+{% block content %}
+<div class="flex justify-between align-center mb-0">
+  <h1>Applications</h1>
+  <a href="/applications/new" class="btn btn-primary">+ Add application</a>
+</div>
+
+<p class="text-muted">
+  {% if show_all %}
+    Showing all applications. <a href="/applications">Show active only</a>
+  {% else %}
+    Showing active applications only. <a href="/applications?show_all=1">Show all</a>
+  {% endif %}
+</p>
+
+{% if applications %}
+<div class="card" style="padding: 0;">
+  <table>
+    <thead>
+      <tr>
+        <th>Company</th>
+        <th>Role</th>
+        <th>Date applied</th>
+        <th>Status</th>
+        <th>Notes</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for app in applications %}
+      <tr>
+        <td><strong>{{ app.company }}</strong></td>
+        <td>{{ app.role_title }}</td>
+        <td>{{ app.date_applied }}</td>
+        <td><span class="badge badge-{{ app.status }}">{{ app.status | replace("_", " ") }}</span></td>
+        <td class="text-muted">{{ app.notes[:60] }}{% if app.notes | length > 60 %}…{% endif %}</td>
+        <td>
+          <div class="flex gap-1">
+            <a href="/applications/{{ app.id }}/edit" class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.8rem;">Edit</a>
+            <form method="post" action="/applications/{{ app.id }}/delete" style="margin:0;">
+              <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.8rem;">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>No applications yet. <a href="/applications/new">Add your first one.</a></p>
+</div>
+{% endif %}
+{% endblock %}

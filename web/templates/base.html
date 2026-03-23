@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}AI Job Support{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+</head>
+<body>
+  <header>
+    <a href="/" class="logo">AI Job Support</a>
+    <nav>
+      <a href="/intelligence">Intelligence</a>
+      <a href="/resume">Resume</a>
+      <a href="/applications">Applications</a>
+      <a href="/encouragement">Boost</a>
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

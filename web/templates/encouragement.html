@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Need a boost? — AI Job Support{% endblock %}
+
+{% block content %}
+<h1>Need a boost?</h1>
+<p class="text-muted">Job searching is hard. It's okay to need a moment.</p>
+
+<div class="card">
+  <div id="response-area" style="margin-bottom: 1.5rem; line-height: 1.7;">
+    {% if default_message %}
+    <p style="margin:0;">{{ default_message }}</p>
+    {% endif %}
+  </div>
+
+  <form hx-post="/encouragement"
+        hx-target="#response-area"
+        hx-swap="innerHTML"
+        hx-indicator="#loading">
+    <label for="user_message">How are you feeling? <span class="text-muted">(optional)</span></label>
+    <textarea id="user_message" name="user_message" placeholder="Tell me what's on your mind, or leave this blank…"></textarea>
+    <div class="flex gap-1 align-center">
+      <button type="submit" class="btn btn-primary">I need a boost</button>
+      <span id="loading" class="htmx-indicator text-muted" style="font-size:0.85rem;">Thinking…</span>
+    </div>
+  </form>
+</div>
+{% endblock %}

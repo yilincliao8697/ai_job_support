@@ -1,0 +1,21 @@
+{% if companies %}
+<ul style="list-style: none; padding: 0; margin: 0;">
+  {% for company in companies %}
+  <li style="padding: 0.6rem 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+    <div>
+      <strong>{{ company.name }}</strong>
+      <div class="text-muted" style="margin-top: 0.15rem;">{{ company.reason }}</div>
+    </div>
+    <form hx-post="/intelligence/watchlist/add"
+          hx-target="#watchlist"
+          hx-swap="innerHTML"
+          style="margin: 0; flex-shrink: 0;">
+      <input type="hidden" name="company_name" value="{{ company.name }}">
+      <button type="submit" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">+ Watchlist</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="text-muted">No results yet.</p>
+{% endif %}

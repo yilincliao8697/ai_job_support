@@ -1,0 +1,9 @@
+<div class="card" style="margin-top: 1rem;">
+  <h2 style="margin-top:0;">Resume generated</h2>
+  <p><strong>{{ target_role }}</strong> at <strong>{{ target_company }}</strong></p>
+  <div class="flex gap-1 mt-2">
+    <a href="/resume/download/{{ filename }}" class="btn btn-primary" download>Download PDF</a>
+    <a href="/applications/new?company={{ target_company | urlencode }}&role={{ target_role | urlencode }}&resume={{ filename | urlencode }}"
+       class="btn btn-secondary">Log this application</a>
+  </div>
+</div>

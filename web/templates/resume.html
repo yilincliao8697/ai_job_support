@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Resume Tailor — AI Job Support{% endblock %}
+
+{% block content %}
+<h1>Resume Tailor</h1>
+<p class="text-muted">Paste a job description and get a tailored, print-ready PDF in minutes.</p>
+
+<div class="card">
+  <form hx-post="/resume/generate"
+        hx-target="#result"
+        hx-swap="innerHTML"
+        hx-indicator="#loading">
+    <label for="job_description">Job description *</label>
+    <textarea id="job_description" name="job_description" placeholder="Paste the full job description here…" style="min-height: 180px;" required></textarea>
+
+    <div class="flex gap-1 align-center">
+      <button type="submit" class="btn btn-primary">Generate resume</button>
+      <span id="loading" class="htmx-indicator text-muted" style="font-size:0.85rem;">Tailoring your resume… this may take 15–30 seconds.</span>
+    </div>
+  </form>
+</div>
+
+<div id="result"></div>
+{% endblock %}

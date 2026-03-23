@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Market Intelligence — AI Job Support{% endblock %}
+
+{% block content %}
+<h1>Market Intelligence</h1>
+<p class="text-muted">Find companies worth applying to, and research them before you apply.</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start;">
+
+  <!-- Company Expander -->
+  <div class="card">
+    <h2 style="margin-top:0;">Company Expander</h2>
+    <p class="text-muted" style="margin-bottom:1rem;">Paste a job description to find similar companies you may not have considered.</p>
+    <form hx-post="/intelligence/expand"
+          hx-target="#expander-results"
+          hx-swap="innerHTML"
+          hx-indicator="#expander-loading">
+      <label for="job_description">Job description</label>
+      <textarea id="job_description" name="job_description"
+                placeholder="Paste the full job description here…"
+                style="min-height: 150px;" required></textarea>
+      <div class="flex gap-1 align-center">
+        <button type="submit" class="btn btn-primary">Find similar companies</button>
+        <span id="expander-loading" class="htmx-indicator text-muted" style="font-size:0.85rem;">Analyzing…</span>
+      </div>
+    </form>
+    <div id="expander-results" style="margin-top: 1rem;"></div>
+  </div>
+
+  <!-- Watchlist -->
+  <div class="card">
+    <h2 style="margin-top:0;">Your watchlist</h2>
+    <div id="watchlist">
+      {% include "partials/watchlist.html" %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

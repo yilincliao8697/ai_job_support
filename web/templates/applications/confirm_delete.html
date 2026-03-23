@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Application — AI Job Support{% endblock %}
+
+{% block content %}
+<h1>Delete application?</h1>
+<div class="card">
+  <p>Are you sure you want to delete your application to <strong>{{ app.company }}</strong> for <strong>{{ app.role_title }}</strong>?</p>
+  <p class="text-muted">This cannot be undone.</p>
+  <div class="flex gap-1">
+    <form method="post" action="/applications/{{ app.id }}/delete">
+      <button type="submit" class="btn btn-danger">Yes, delete</button>
+    </form>
+    <a href="/applications" class="btn btn-secondary">Cancel</a>
+  </div>
+</div>
+{% endblock %}

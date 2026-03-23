@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}{{ company.company_name }} — AI Job Support{% endblock %}
+
+{% block content %}
+<div class="flex justify-between align-center" style="margin-bottom: 1rem;">
+  <h1>{{ company.company_name }}</h1>
+  <a href="/intelligence" class="btn btn-secondary">← Back</a>
+</div>
+
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 style="margin: 0;">Company Pulse</h2>
+    <button class="btn btn-primary"
+            hx-post="/companies/{{ company.id }}/pulse"
+            hx-target="#pulse-content"
+            hx-swap="innerHTML"
+            hx-indicator="#pulse-loading">
+      Refresh pulse
+    </button>
+    <span id="pulse-loading" class="htmx-indicator text-muted" style="font-size:0.85rem;">Researching… may take 20–30 seconds.</span>
+  </div>
+
+  <div id="pulse-content">
+    {% if pulse %}
+      {% include "partials/pulse_content.html" %}
+    {% else %}
+    <p class="text-muted">Click "Refresh pulse" to load current company data.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div style="margin-top: 1rem;">
+  <form hx-post="/companies/{{ company.id }}/delete"
+        hx-confirm="Remove {{ company.company_name }} from your watchlist?"
+        style="display: inline;">
+    <button type="submit" class="btn btn-danger">Remove from watchlist</button>
+  </form>
+</div>
+{% endblock %}

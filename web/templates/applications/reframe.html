@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}{{ status | title }} — AI Job Support{% endblock %}
+
+{% block content %}
+<h1>{{ status | title }}</h1>
+<div class="card">
+  <p><strong>{{ app.company }}</strong> — {{ app.role_title }}</p>
+  {% if reframe %}
+  <p style="margin-top: 1rem; line-height: 1.7; color: #555;">{{ reframe }}</p>
+  {% endif %}
+  <a href="/applications" class="btn btn-secondary mt-2">Back to applications</a>
+</div>
+{% endblock %}

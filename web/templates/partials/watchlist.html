@@ -1,0 +1,17 @@
+{% if companies %}
+<ul style="list-style: none; padding: 0; margin: 0;">
+  {% for company in companies %}
+  <li style="padding: 0.6rem 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+    <a href="/companies/{{ company.id }}">{{ company.company_name }}</a>
+    <form hx-post="/companies/{{ company.id }}/delete"
+          hx-target="#watchlist"
+          hx-swap="innerHTML"
+          style="margin: 0;">
+      <button type="submit" class="btn btn-danger" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">Remove</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="text-muted empty-state" style="padding: 1rem 0;">No companies yet. Find some above.</p>
+{% endif %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — AI Job Support{% endblock %}
+
+{% block content %}
+
+<!-- One thing today -->
+<div class="banner">
+  <p>
+    {% if one_thing_today %}
+      {{ one_thing_today }}
+    {% else %}
+      You're all set for now.
+    {% endif %}
+  </p>
+  {% if one_thing_today %}
+  <a href="/applications/new" class="btn btn-primary" style="white-space: nowrap;">Let's go</a>
+  {% endif %}
+</div>
+
+<!-- Effort chart -->
+<div class="card">
+  <h2 style="margin-top:0;">Your effort so far</h2>
+  {% if chart_data %}
+  <div class="chart-container">
+    <canvas id="effortChart"></canvas>
+  </div>
+  <p class="text-muted mb-0">
+    {{ total_applications }} application{{ "s" if total_applications != 1 }}
+    {% if first_application_date %} since {{ first_application_date }}{% endif %}
+  </p>
+  {% else %}
+  <div class="empty-state">
+    <p>No applications yet. <a href="/applications/new">Add your first one.</a></p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Module nav cards -->
+<div class="card-grid">
+  <div class="card">
+    <h2>1. Market Intelligence</h2>
+    <p>Find companies worth applying to from a job posting.</p>
+    <a href="/intelligence" class="card-link">Open →</a>
+  </div>
+  <div class="card">
+    <h2>2. Resume Tailor</h2>
+    <p>Generate a tailored PDF resume for any role in minutes.</p>
+    <a href="/resume" class="card-link">Open →</a>
+  </div>
+  <div class="card">
+    <h2>3. Applications</h2>
+    <p>Log and track every application you've sent.</p>
+    <a href="/applications" class="card-link">Open →</a>
+  </div>
+  <div class="card">
+    <h2>4. Need a boost?</h2>
+    <p>Job searching is hard. I've got you.</p>
+    <a href="/encouragement" class="card-link">Open →</a>
+  </div>
+</div>
+
+{% if chart_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  const labels = {{ chart_data | map(attribute="date") | list | tojson }};
+  const data   = {{ chart_data | map(attribute="cumulative_count") | list | tojson }};
+
+  new Chart(document.getElementById("effortChart"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: "#3b6fd4",
+        backgroundColor: "rgba(59,111,212,0.08)",
+        borderWidth: 2,
+        pointRadius: 3,
+        fill: true,
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+</script>
+{% endif %}
+
+{% endblock %}

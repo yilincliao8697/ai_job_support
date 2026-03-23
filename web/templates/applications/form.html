@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit" if app else "New" }} Application — AI Job Support{% endblock %}
+
+{% block content %}
+<h1>{{ "Edit application" if app else "New application" }}</h1>
+
+<div class="card">
+  <form method="post" action="{{ action }}">
+    <label for="company">Company *</label>
+    <input type="text" id="company" name="company" required value="{{ app.company if app else prefill_company }}">
+
+    <label for="role_title">Role title *</label>
+    <input type="text" id="role_title" name="role_title" required value="{{ app.role_title if app else prefill_role }}">
+
+    <label for="job_url">Job URL</label>
+    <input type="url" id="job_url" name="job_url" value="{{ app.job_url if app else '' }}">
+
+    <label for="date_applied">Date applied *</label>
+    <input type="date" id="date_applied" name="date_applied" required value="{{ app.date_applied if app else today }}">
+
+    <label for="status">Status *</label>
+    <select id="status" name="status" required>
+      {% set statuses = ["applied", "phone_screen", "interview", "offer", "rejected", "ghosted"] %}
+      {% for s in statuses %}
+      <option value="{{ s }}" {% if (app and app.status == s) or (not app and s == "applied") %}selected{% endif %}>
+        {{ s | replace("_", " ") | title }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <label for="resume_filename">Resume used</label>
+    <input type="text" id="resume_filename" name="resume_filename" value="{{ app.resume_filename if app else prefill_resume }}">
+
+    <label for="referral_contacts">People I know there</label>
+    <input type="text" id="referral_contacts" name="referral_contacts" value="{{ app.referral_contacts if app else '' }}">
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes">{{ app.notes if app else '' }}</textarea>
+
+    <div class="flex gap-1">
+      <button type="submit" class="btn btn-primary">Save application</button>
+      <a href="/applications" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

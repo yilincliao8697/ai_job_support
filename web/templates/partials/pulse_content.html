@@ -1,0 +1,35 @@
+<details open>
+  <summary>Recent Funding</summary>
+  <p style="padding: 0.5rem 0 0.25rem; color: #333;">{{ pulse.recent_funding }}</p>
+</details>
+
+<details>
+  <summary>Headcount Direction</summary>
+  <p style="padding: 0.5rem 0 0.25rem; color: #333;">{{ pulse.headcount_direction }}</p>
+</details>
+
+<details>
+  <summary>Layoff News</summary>
+  <p style="padding: 0.5rem 0 0.25rem; color: #333;">{{ pulse.layoff_news }}</p>
+</details>
+
+<details>
+  <summary>Open AI/ML Roles</summary>
+  <p style="padding: 0.5rem 0 0.25rem; color: #333;">{{ pulse.open_roles_count }}</p>
+</details>
+
+<details>
+  <summary>Hiring Signal</summary>
+  <p style="padding: 0.5rem 0 0.25rem; color: #333;">{{ pulse.hiring_signal }}</p>
+</details>
+
+{% if pulse.sources %}
+<div style="margin-top: 0.75rem;">
+  <p class="text-muted" style="margin-bottom: 0.25rem;">Sources</p>
+  <ul style="margin-left: 1rem;">
+    {% for url in pulse.sources %}
+    <li class="text-muted" style="font-size: 0.8rem;"><a href="{{ url }}" target="_blank">{{ url }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
