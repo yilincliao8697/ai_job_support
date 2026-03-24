@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Revise Resume — AI Job Support{% endblock %}
+
+{% block content %}
+<div class="flex justify-between align-center" style="margin-bottom: 1rem;">
+  <h1>Revise Resume — {{ record.company }} / {{ record.role }}</h1>
+  <a href="/resume/history" class="btn btn-secondary">← Resume history</a>
+</div>
+
+{% if chain | length > 1 %}
+<div class="card" style="margin-bottom: 1rem;">
+  <h2 style="margin-top: 0;">Prior changes</h2>
+  <ul style="margin: 0; padding-left: 1.25rem;">
+    {% for ancestor in chain %}
+      {% if ancestor.feedback_summary %}
+      <li class="text-muted" style="margin-bottom: 0.25rem;">
+        Round {{ loop.index }}: {{ ancestor.feedback_summary }}
+      </li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="card">
+  <form method="post" action="/resume/revise-from-history">
+    <input type="hidden" name="parent_resume_id" value="{{ record.id }}">
+
+    <label for="job_description">Job description</label>
+    <textarea id="job_description" name="job_description"
+              style="min-height: 160px;">{{ record.job_description }}</textarea>
+
+    <label for="feedback">What would you like changed? *</label>
+    <textarea id="feedback" name="feedback"
+              placeholder="e.g. Emphasise LLM infrastructure experience, shorten the summary, remove the 2019 internship."
+              style="min-height: 100px;" required></textarea>
+
+    <div class="flex gap-1">
+      <button type="submit" class="btn btn-primary">Revise →</button>
+      <a href="/resume/history" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -4,9 +4,11 @@ import pytest
 from core.tracker import init_db
 from core.resume_store import (
     init_resumes_table,
+    migrate_resumes,
     record_resume,
     list_resumes,
     get_resume,
+    get_revision_chain,
     link_application,
     delete_resume_record,
 )
@@ -18,6 +20,7 @@ def db_path():
         path = f.name
     init_db(path)
     init_resumes_table(path)
+    migrate_resumes(path)
     yield path
     os.unlink(path)
 
@@ -78,3 +81,68 @@ def test_delete_resume_record_removes_record(db_path):
 
 def test_delete_resume_record_does_not_raise_for_missing(db_path):
     delete_resume_record(db_path, 9999)  # should not raise
+
+
+# ---------------------------------------------------------------------------
+# migrate_resumes
+# ---------------------------------------------------------------------------
+
+def test_migrate_resumes_adds_columns(db_path):
+    migrate_resumes(db_path)
+    rid = record_resume(db_path, "stripe.pdf", "Stripe", "Engineer", job_description="We are hiring.", parent_id=None, feedback_summary="Shorter summary.")
+    result = get_resume(db_path, rid)
+    assert result.job_description == "We are hiring."
+    assert result.feedback_summary == "Shorter summary."
+
+
+def test_migrate_resumes_is_idempotent(db_path):
+    migrate_resumes(db_path)
+    migrate_resumes(db_path)  # should not raise
+
+
+# ---------------------------------------------------------------------------
+# record_resume with new fields
+# ---------------------------------------------------------------------------
+
+def test_record_resume_stores_job_description_and_parent_id(db_path):
+    migrate_resumes(db_path)
+    v1 = record_resume(db_path, "v1.pdf", "Stripe", "Engineer", job_description="Some JD text.")
+    v2 = record_resume(db_path, "v2.pdf", "Stripe", "Engineer", job_description="Some JD text.", parent_id=v1, feedback_summary="Shorter bullets.")
+    result = get_resume(db_path, v2)
+    assert result.job_description == "Some JD text."
+    assert result.parent_id == v1
+    assert result.feedback_summary == "Shorter bullets."
+
+
+# ---------------------------------------------------------------------------
+# get_revision_chain
+# ---------------------------------------------------------------------------
+
+def test_get_revision_chain_single_record(db_path):
+    migrate_resumes(db_path)
+    rid = record_resume(db_path, "v1.pdf", "Stripe", "Engineer")
+    chain = get_revision_chain(db_path, rid)
+    assert len(chain) == 1
+    assert chain[0].id == rid
+
+
+def test_get_revision_chain_two_generations_oldest_first(db_path):
+    migrate_resumes(db_path)
+    v1 = record_resume(db_path, "v1.pdf", "Stripe", "Engineer")
+    v2 = record_resume(db_path, "v2.pdf", "Stripe", "Engineer", parent_id=v1)
+    chain = get_revision_chain(db_path, v2)
+    assert len(chain) == 2
+    assert chain[0].id == v1
+    assert chain[1].id == v2
+
+
+def test_get_revision_chain_three_generations_oldest_first(db_path):
+    migrate_resumes(db_path)
+    v1 = record_resume(db_path, "v1.pdf", "Stripe", "Engineer")
+    v2 = record_resume(db_path, "v2.pdf", "Stripe", "Engineer", parent_id=v1)
+    v3 = record_resume(db_path, "v3.pdf", "Stripe", "Engineer", parent_id=v2)
+    chain = get_revision_chain(db_path, v3)
+    assert len(chain) == 3
+    assert chain[0].id == v1
+    assert chain[1].id == v2
+    assert chain[2].id == v3

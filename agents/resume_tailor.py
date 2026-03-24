@@ -1,6 +1,7 @@
 import json
 import os
 from dataclasses import dataclass, field
+from typing import Optional
 
 import anthropic
 from dotenv import load_dotenv
@@ -8,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MODEL = "claude-sonnet-4-6"
+HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
 
 def _strip_code_fences(text: str) -> str:
@@ -36,7 +38,7 @@ def _client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
-def tailor_cv(cv_text: str, job_description: str) -> TailoredCV:
+def tailor_cv(cv_text: str, job_description: str, revision_context: Optional[str] = None) -> TailoredCV:
     """
     Takes the full CV as text and a job description.
 
@@ -45,9 +47,18 @@ def tailor_cv(cv_text: str, job_description: str) -> TailoredCV:
     Respects a one-page constraint where possible.
     Uses claude-sonnet-4-6.
     """
+    revision_block = ""
+    if revision_context:
+        revision_block = f"""REVISION INSTRUCTIONS:
+The candidate has already reviewed a previous version of this resume and requests the following changes. Apply them carefully while preserving all other tailoring decisions.
+
+{revision_context}
+
+"""
+
     prompt = f"""You are an expert resume writer. Given a candidate's full CV and a job description, produce a tailored resume.
 
-INSTRUCTIONS:
+{revision_block}INSTRUCTIONS:
 - Select the 2-3 most relevant experience entries
 - Select 1-2 most relevant projects
 - Rewrite bullet points to mirror the language and keywords in the job description
@@ -133,3 +144,22 @@ JOB DESCRIPTION:
         target_role=data["target_role"],
         target_company=data["target_company"],
     )
+
+
+def summarise_feedback(raw_feedback: str) -> str:
+    """
+    Condense raw user feedback into one or two plain-English sentences
+    suitable for inclusion in a revision brief.
+    Uses claude-haiku-4-5-20251001 (speed over quality — output is short).
+    """
+    prompt = f"""Summarise the following resume feedback in one or two plain-English sentences. Be concise — this summary will be reused as context in future revision rounds. Output only the summary, no preamble.
+
+FEEDBACK:
+{raw_feedback}"""
+
+    message = _client().messages.create(
+        model=HAIKU_MODEL,
+        max_tokens=150,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text.strip()

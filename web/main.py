@@ -17,7 +17,7 @@ from agents.wellbeing import (
     get_encouragement_on_log, get_reframe_on_hard_status,
     get_one_thing_today, get_on_demand_encouragement,
 )
-from agents.resume_tailor import tailor_cv
+from agents.resume_tailor import tailor_cv, summarise_feedback
 from core.cv_store import get_cv_as_text
 from core.pdf_renderer import render_resume_pdf
 from core.tracker import (
@@ -26,8 +26,8 @@ from core.tracker import (
     get_application_counts_by_date, ApplicationIn, ApplicationUpdate,
 )
 from core.resume_store import (
-    init_resumes_table, record_resume, link_application,
-    list_resumes, delete_resume_record,
+    init_resumes_table, migrate_resumes, record_resume, link_application,
+    list_resumes, delete_resume_record, get_resume, get_revision_chain,
 )
 
 load_dotenv()
@@ -61,6 +61,7 @@ templates = Jinja2Templates(directory="web/templates")
 init_db(DB_PATH)
 migrate_watchlist(DB_PATH)
 init_resumes_table(DB_PATH)
+migrate_resumes(DB_PATH)
 
 templates.env.filters["format_date"] = _format_date
 
@@ -394,7 +395,10 @@ async def resume_generate(request: Request, job_description: str = Form(...)):
     cv_text = get_cv_as_text(CV_PATH)
     tailored = tailor_cv(cv_text, job_description)
     filename = render_resume_pdf(tailored, RESUMES_DIR)
-    resume_id = record_resume(DB_PATH, filename, tailored.target_company, tailored.target_role)
+    resume_id = record_resume(
+        DB_PATH, filename, tailored.target_company, tailored.target_role,
+        job_description=job_description,
+    )
     return templates.TemplateResponse(
         request,
         "partials/resume_result.html",
@@ -464,6 +468,87 @@ async def resume_history_delete(request: Request, resume_id: int):
     return templates.TemplateResponse(
         request, "partials/resume_history_rows.html", {"resumes": resumes}
     )
+
+
+def _build_revision_context(chain: list, new_summary: str) -> str:
+    """Build a numbered revision context string from a chain of prior summaries plus the new one."""
+    summaries = [r.feedback_summary for r in chain if r.feedback_summary]
+    summaries.append(new_summary)
+    return "\n".join(f"Round {i + 1}: {s}" for i, s in enumerate(summaries))
+
+
+@app.post("/resume/revise")
+async def resume_revise(
+    request: Request,
+    parent_resume_id: int = Form(...),
+    feedback: str = Form(...),
+):
+    """Revise a previously generated resume based on user feedback. Returns updated result card partial."""
+    parent = get_resume(DB_PATH, parent_resume_id)
+    if parent is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    feedback_summary = summarise_feedback(feedback)
+    chain = get_revision_chain(DB_PATH, parent_resume_id)
+    revision_context = _build_revision_context(chain, feedback_summary)
+    cv_text = get_cv_as_text(CV_PATH)
+    tailored = tailor_cv(cv_text, parent.job_description, revision_context)
+    filename = render_resume_pdf(tailored, RESUMES_DIR)
+    resume_id = record_resume(
+        DB_PATH, filename, tailored.target_company, tailored.target_role,
+        job_description=parent.job_description,
+        parent_id=parent_resume_id,
+        feedback_summary=feedback_summary,
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/resume_result.html",
+        {
+            "filename": filename,
+            "resume_id": resume_id,
+            "target_role": tailored.target_role,
+            "target_company": tailored.target_company,
+        },
+    )
+
+
+@app.get("/resume/revise/{resume_id}")
+async def resume_revise_page(request: Request, resume_id: int):
+    """Render the dedicated revision page for a resume from history."""
+    record = get_resume(DB_PATH, resume_id)
+    if record is None or record.job_description is None:
+        raise HTTPException(status_code=404, detail="Resume not found or predates revision support")
+    chain = get_revision_chain(DB_PATH, resume_id)
+    return templates.TemplateResponse(
+        request,
+        "resume_revise.html",
+        {"record": record, "chain": chain},
+    )
+
+
+@app.post("/resume/revise-from-history")
+async def resume_revise_from_history(
+    request: Request,
+    parent_resume_id: int = Form(...),
+    job_description: str = Form(...),
+    feedback: str = Form(...),
+):
+    """Revision triggered from the history page. Redirects to /resume/history on success."""
+    parent = get_resume(DB_PATH, parent_resume_id)
+    if parent is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    feedback_summary = summarise_feedback(feedback)
+    chain = get_revision_chain(DB_PATH, parent_resume_id)
+    revision_context = _build_revision_context(chain, feedback_summary)
+    cv_text = get_cv_as_text(CV_PATH)
+    tailored = tailor_cv(cv_text, job_description, revision_context)
+    filename = render_resume_pdf(tailored, RESUMES_DIR)
+    record_resume(
+        DB_PATH, filename, tailored.target_company, tailored.target_role,
+        job_description=job_description,
+        parent_id=parent_resume_id,
+        feedback_summary=feedback_summary,
+    )
+    return RedirectResponse("/resume/history", status_code=303)
 
 
 # ---------------------------------------------------------------------------

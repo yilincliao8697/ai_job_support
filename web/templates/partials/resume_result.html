@@ -10,4 +10,23 @@
   <p style="margin: 0.75rem 0 0; font-size: 0.85rem;">
     <a href="/resume/history">View all resumes →</a>
   </p>
+
+  <details style="margin-top: 1rem;">
+    <summary style="cursor: pointer; font-size: 0.9rem; color: #555;">Give feedback on this resume</summary>
+    <form hx-post="/resume/revise"
+          hx-target="#result"
+          hx-swap="innerHTML"
+          hx-indicator="#revision-loading"
+          style="margin-top: 0.75rem;">
+      <input type="hidden" name="parent_resume_id" value="{{ resume_id }}">
+      <label for="revision-feedback">What would you like changed?</label>
+      <textarea id="revision-feedback" name="feedback"
+                placeholder="e.g. Emphasise LLM infrastructure experience, shorten the summary, remove the 2019 internship."
+                style="min-height: 80px;" required></textarea>
+      <div class="flex gap-1 align-center">
+        <button type="submit" class="btn btn-primary">Revise →</button>
+        <span id="revision-loading" class="htmx-indicator text-muted" style="font-size:0.85rem;">Revising… this may take 15–30 seconds.</span>
+      </div>
+    </form>
+  </details>
 </div>

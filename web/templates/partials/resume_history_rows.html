@@ -12,6 +12,9 @@
               hx-get="/resume/preview-frame/{{ record.filename }}"
               hx-target="#preview-{{ record.id }}"
               hx-swap="innerHTML">Preview</button>
+      {% if record.job_description %}
+      <a href="/resume/revise/{{ record.id }}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">Revise</a>
+      {% endif %}
       <button class="btn btn-danger"
               style="font-size: 0.8rem; padding: 0.25rem 0.6rem;"
               hx-post="/resume/history/{{ record.id }}/delete"

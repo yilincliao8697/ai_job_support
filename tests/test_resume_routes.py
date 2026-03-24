@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from agents.resume_tailor import TailoredCV
 from core.tracker import init_db
-from core.resume_store import record_resume
+from core.resume_store import record_resume, get_resume
 
 
 SAMPLE_TAILORED_CV = TailoredCV(
@@ -215,6 +215,107 @@ def test_resume_history_delete_removes_record_and_returns_rows(mock_wc, setup):
     client = TestClient(main_module.app)
     response = client.post(f"/resume/history/{resume_id}/delete")
     assert response.status_code == 200
-    # Record should be gone
-    from core.resume_store import get_resume
     assert get_resume(db, resume_id) is None
+
+
+# ---------------------------------------------------------------------------
+# /resume/revise
+# ---------------------------------------------------------------------------
+
+def _mock_summarise(text="Emphasise LLM experience; shorten summary."):
+    block = MagicMock()
+    block.text = text
+    resp = MagicMock()
+    resp.content = [block]
+    return resp
+
+
+@patch("web.main.summarise_feedback", return_value="Emphasise LLM experience; shorten summary.")
+@patch("web.main.render_resume_pdf", return_value="cohere_v2.pdf")
+@patch("web.main.tailor_cv", return_value=SAMPLE_TAILORED_CV)
+@patch("agents.wellbeing._client")
+def test_resume_revise_returns_200_with_filename(mock_wc, mock_tailor, mock_pdf, mock_summarise, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, resumes_dir, main_module = setup
+    os.makedirs(resumes_dir, exist_ok=True)
+    parent_id = record_resume(db, "cohere_v1.pdf", "Cohere", "ML Engineer", job_description="We are hiring ML Engineers.")
+    client = TestClient(main_module.app)
+    response = client.post("/resume/revise", data={
+        "parent_resume_id": parent_id,
+        "feedback": "Make the summary shorter.",
+    })
+    assert response.status_code == 200
+    assert "cohere_v2.pdf" in response.text
+
+
+@patch("web.main.summarise_feedback", return_value="Shorter summary.")
+@patch("web.main.render_resume_pdf", return_value="cohere_v2.pdf")
+@patch("web.main.tailor_cv", return_value=SAMPLE_TAILORED_CV)
+@patch("agents.wellbeing._client")
+def test_resume_revise_creates_record_with_correct_parent_id(mock_wc, mock_tailor, mock_pdf, mock_summarise, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, resumes_dir, main_module = setup
+    os.makedirs(resumes_dir, exist_ok=True)
+    parent_id = record_resume(db, "cohere_v1.pdf", "Cohere", "ML Engineer", job_description="JD text.")
+    client = TestClient(main_module.app)
+    client.post("/resume/revise", data={"parent_resume_id": parent_id, "feedback": "Shorter."})
+    resumes = [r for r in __import__("core.resume_store", fromlist=["list_resumes"]).list_resumes(db) if r.parent_id == parent_id]
+    assert len(resumes) == 1
+    assert resumes[0].parent_id == parent_id
+
+
+@patch("agents.wellbeing._client")
+def test_resume_revise_404_for_missing_parent(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    client = make_client(setup)
+    response = client.post("/resume/revise", data={"parent_resume_id": 9999, "feedback": "Shorter."})
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# /resume/revise/{id}
+# ---------------------------------------------------------------------------
+
+@patch("agents.wellbeing._client")
+def test_resume_revise_page_returns_200_with_company_and_jd(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "cohere.pdf", "Cohere", "ML Engineer", job_description="We are hiring ML Engineers.")
+    client = TestClient(main_module.app)
+    response = client.get(f"/resume/revise/{rid}")
+    assert response.status_code == 200
+    assert "Cohere" in response.text
+    assert "We are hiring ML Engineers." in response.text
+
+
+@patch("agents.wellbeing._client")
+def test_resume_revise_page_404_for_no_jd(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "cohere.pdf", "Cohere", "ML Engineer")  # no JD
+    client = TestClient(main_module.app)
+    response = client.get(f"/resume/revise/{rid}")
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# /resume/revise-from-history
+# ---------------------------------------------------------------------------
+
+@patch("web.main.summarise_feedback", return_value="Shorter summary.")
+@patch("web.main.render_resume_pdf", return_value="cohere_v2.pdf")
+@patch("web.main.tailor_cv", return_value=SAMPLE_TAILORED_CV)
+@patch("agents.wellbeing._client")
+def test_resume_revise_from_history_redirects_to_history(mock_wc, mock_tailor, mock_pdf, mock_summarise, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, resumes_dir, main_module = setup
+    os.makedirs(resumes_dir, exist_ok=True)
+    parent_id = record_resume(db, "cohere_v1.pdf", "Cohere", "ML Engineer", job_description="JD text.")
+    client = TestClient(main_module.app)
+    response = client.post("/resume/revise-from-history", data={
+        "parent_resume_id": parent_id,
+        "job_description": "Updated JD text.",
+        "feedback": "Shorter summary.",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/resume/history"

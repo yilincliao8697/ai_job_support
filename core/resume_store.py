@@ -13,6 +13,9 @@ class ResumeRecord:
     role: str
     generated_at: str
     application_id: Optional[int] = None
+    job_description: Optional[str] = None
+    parent_id: Optional[int] = None
+    feedback_summary: Optional[str] = None
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
@@ -26,23 +29,50 @@ def init_resumes_table(db_path: str) -> None:
     with _connect(db_path) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS resumes (
-                id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                filename       TEXT NOT NULL,
-                company        TEXT NOT NULL,
-                role           TEXT NOT NULL,
-                generated_at   TEXT NOT NULL,
-                application_id INTEGER
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename         TEXT NOT NULL,
+                company          TEXT NOT NULL,
+                role             TEXT NOT NULL,
+                generated_at     TEXT NOT NULL,
+                application_id   INTEGER,
+                job_description  TEXT,
+                parent_id        INTEGER,
+                feedback_summary TEXT
             )
         """)
 
 
-def record_resume(db_path: str, filename: str, company: str, role: str) -> int:
+def migrate_resumes(db_path: str) -> None:
+    """Add revision columns to the resumes table if they don't exist (idempotent)."""
+    new_cols = {
+        "job_description": "TEXT",
+        "parent_id": "INTEGER",
+        "feedback_summary": "TEXT",
+    }
+    with _connect(db_path) as conn:
+        cols = {row["name"] for row in conn.execute("PRAGMA table_info(resumes)").fetchall()}
+        for col, col_type in new_cols.items():
+            if col not in cols:
+                conn.execute(f"ALTER TABLE resumes ADD COLUMN {col} {col_type}")
+
+
+def record_resume(
+    db_path: str,
+    filename: str,
+    company: str,
+    role: str,
+    job_description: Optional[str] = None,
+    parent_id: Optional[int] = None,
+    feedback_summary: Optional[str] = None,
+) -> int:
     """Insert a new resume record and return its id."""
     generated_at = datetime.now().isoformat()
     with _connect(db_path) as conn:
         cursor = conn.execute(
-            "INSERT INTO resumes (filename, company, role, generated_at) VALUES (?, ?, ?, ?)",
-            (filename, company, role, generated_at),
+            """INSERT INTO resumes
+               (filename, company, role, generated_at, job_description, parent_id, feedback_summary)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (filename, company, role, generated_at, job_description, parent_id, feedback_summary),
         )
         return cursor.lastrowid
 
@@ -65,6 +95,24 @@ def get_resume(db_path: str, resume_id: int) -> Optional[ResumeRecord]:
     if row is None:
         return None
     return ResumeRecord(**dict(row))
+
+
+def get_revision_chain(db_path: str, resume_id: int) -> list[ResumeRecord]:
+    """
+    Walk parent_id links from the given record back to the root.
+    Returns the chain oldest-first (root at index 0, given record last).
+    Returns a single-item list if the record has no parent.
+    """
+    chain = []
+    current_id = resume_id
+    while current_id is not None:
+        record = get_resume(db_path, current_id)
+        if record is None:
+            break
+        chain.append(record)
+        current_id = record.parent_id
+    chain.reverse()
+    return chain
 
 
 def link_application(db_path: str, resume_id: int, application_id: int) -> None:

@@ -1,7 +1,7 @@
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from agents.resume_tailor import tailor_cv, TailoredCV
+from agents.resume_tailor import tailor_cv, summarise_feedback, TailoredCV
 
 SAMPLE_CV_TEXT = """
 === PERSONAL ===
@@ -83,3 +83,34 @@ def test_tailor_cv_raises_on_missing_fields(mock_client):
     mock_client.return_value.messages.create.return_value = _mock_response(incomplete)
     with pytest.raises(ValueError, match="missing required fields"):
         tailor_cv(SAMPLE_CV_TEXT, SAMPLE_JD)
+
+
+@patch("agents.resume_tailor._client")
+def test_tailor_cv_with_revision_context_includes_revision_block(mock_client):
+    mock_client.return_value.messages.create.return_value = _mock_response(VALID_RESPONSE)
+    tailor_cv(SAMPLE_CV_TEXT, SAMPLE_JD, revision_context="Round 1: Emphasise LLM experience.")
+    call_args = mock_client.return_value.messages.create.call_args
+    prompt = call_args.kwargs["messages"][0]["content"]
+    assert "REVISION INSTRUCTIONS" in prompt
+    assert "Round 1: Emphasise LLM experience." in prompt
+
+
+@patch("agents.resume_tailor._client")
+def test_tailor_cv_without_revision_context_excludes_revision_block(mock_client):
+    mock_client.return_value.messages.create.return_value = _mock_response(VALID_RESPONSE)
+    tailor_cv(SAMPLE_CV_TEXT, SAMPLE_JD)
+    call_args = mock_client.return_value.messages.create.call_args
+    prompt = call_args.kwargs["messages"][0]["content"]
+    assert "REVISION INSTRUCTIONS" not in prompt
+
+
+@patch("agents.resume_tailor._client")
+def test_summarise_feedback_returns_nonempty_string(mock_client):
+    block = MagicMock()
+    block.text = "Emphasise LLM infrastructure experience; remove 2019 internship."
+    resp = MagicMock()
+    resp.content = [block]
+    mock_client.return_value.messages.create.return_value = resp
+    result = summarise_feedback("Please emphasise my LLM infrastructure experience more and remove the 2019 internship entry.")
+    assert isinstance(result, str)
+    assert len(result) > 0
