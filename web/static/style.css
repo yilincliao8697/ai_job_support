@@ -38,6 +38,51 @@ header nav a:hover {
   color: #2c2c2c;
 }
 
+/* Nav dropdowns */
+.nav-dropdown {
+  display: inline-block;
+  position: relative;
+  margin-left: 1.5rem;
+  vertical-align: middle;
+}
+
+.nav-dropdown > a {
+  margin-left: 0;
+}
+
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  min-width: 10rem;
+  z-index: 100;
+  padding: 0.35rem 0;
+}
+
+.nav-dropdown-menu a {
+  display: block;
+  padding: 0.45rem 1rem;
+  margin-left: 0;
+  font-size: 0.875rem;
+  color: #555;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-dropdown-menu a:hover {
+  background: #f5f5f5;
+  color: #2c2c2c;
+}
+
+.nav-dropdown:hover .nav-dropdown-menu {
+  display: block;
+}
+
 main {
   max-width: 860px;
   margin: 2rem auto;
@@ -101,6 +146,9 @@ a:hover { color: #2a52a8; }
   border-radius: 6px;
   font-size: 0.9rem;
   font-weight: 500;
+  line-height: 1.5;
+  font-family: inherit;
+  vertical-align: middle;
   cursor: pointer;
   border: none;
   text-decoration: none;
@@ -201,7 +249,7 @@ th {
 td {
   padding: 0.65rem 0.75rem;
   border-bottom: 1px solid #f0f0f0;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 tr:last-child td { border-bottom: none; }

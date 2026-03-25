@@ -11,6 +11,9 @@ from core.resume_store import (
     get_revision_chain,
     link_application,
     delete_resume_record,
+    update_resume_json,
+    update_resume_after_edit,
+    get_tailored_cv,
 )
 
 
@@ -146,3 +149,59 @@ def test_get_revision_chain_three_generations_oldest_first(db_path):
     assert chain[0].id == v1
     assert chain[1].id == v2
     assert chain[2].id == v3
+
+
+# ---------------------------------------------------------------------------
+# tailored_json — migrate, store, update, retrieve
+# ---------------------------------------------------------------------------
+
+def test_migrate_resumes_adds_tailored_json_column(db_path):
+    migrate_resumes(db_path)  # already called in fixture; call again to confirm idempotent
+    rid = record_resume(db_path, "stripe.pdf", "Stripe", "Engineer", tailored_json='{"x": 1}')
+    result = get_resume(db_path, rid)
+    assert result.tailored_json == '{"x": 1}'
+
+
+def test_migrate_resumes_tailored_json_idempotent(db_path):
+    migrate_resumes(db_path)
+    migrate_resumes(db_path)  # should not raise
+
+
+def test_record_resume_stores_tailored_json(db_path):
+    import json
+    payload = json.dumps({"target_role": "ML Engineer", "skills": {"languages": ["Python"]}})
+    rid = record_resume(db_path, "stripe.pdf", "Stripe", "ML Engineer", tailored_json=payload)
+    result = get_resume(db_path, rid)
+    assert result.tailored_json == payload
+
+
+def test_update_resume_json_overwrites_field(db_path):
+    rid = record_resume(db_path, "stripe.pdf", "Stripe", "Engineer", tailored_json='{"v": 1}')
+    update_resume_json(db_path, rid, '{"v": 2}')
+    result = get_resume(db_path, rid)
+    assert result.tailored_json == '{"v": 2}'
+
+
+def test_update_resume_after_edit_updates_both_fields(db_path):
+    rid = record_resume(db_path, "old.pdf", "Stripe", "Engineer", tailored_json='{"v": 1}')
+    update_resume_after_edit(db_path, rid, '{"v": 2}', "new.pdf")
+    result = get_resume(db_path, rid)
+    assert result.tailored_json == '{"v": 2}'
+    assert result.filename == "new.pdf"
+
+
+def test_get_tailored_cv_returns_dict(db_path):
+    import json
+    payload = {"target_role": "Engineer", "skills": {}}
+    rid = record_resume(db_path, "stripe.pdf", "Stripe", "Engineer", tailored_json=json.dumps(payload))
+    result = get_tailored_cv(db_path, rid)
+    assert result == payload
+
+
+def test_get_tailored_cv_returns_none_when_json_is_null(db_path):
+    rid = record_resume(db_path, "stripe.pdf", "Stripe", "Engineer")
+    assert get_tailored_cv(db_path, rid) is None
+
+
+def test_get_tailored_cv_returns_none_for_missing_id(db_path):
+    assert get_tailored_cv(db_path, 9999) is None

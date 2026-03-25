@@ -1,4 +1,8 @@
+import dataclasses
+import itertools
+import json
 import os
+import re as _re
 from datetime import date
 
 from fastapi import FastAPI, Request, Form, HTTPException
@@ -17,7 +21,7 @@ from agents.wellbeing import (
     get_encouragement_on_log, get_reframe_on_hard_status,
     get_one_thing_today, get_on_demand_encouragement,
 )
-from agents.resume_tailor import tailor_cv, summarise_feedback
+from agents.resume_tailor import tailor_cv, summarise_feedback, TailoredCV
 from core.cv_store import get_cv_as_text
 from core.pdf_renderer import render_resume_pdf
 from core.tracker import (
@@ -28,6 +32,7 @@ from core.tracker import (
 from core.resume_store import (
     init_resumes_table, migrate_resumes, record_resume, link_application,
     list_resumes, delete_resume_record, get_resume, get_revision_chain,
+    update_resume_json, update_resume_after_edit, get_tailored_cv,
 )
 
 load_dotenv()
@@ -395,9 +400,11 @@ async def resume_generate(request: Request, job_description: str = Form(...)):
     cv_text = get_cv_as_text(CV_PATH)
     tailored = tailor_cv(cv_text, job_description)
     filename = render_resume_pdf(tailored, RESUMES_DIR)
+    tailored_json_str = json.dumps(dataclasses.asdict(tailored))
     resume_id = record_resume(
         DB_PATH, filename, tailored.target_company, tailored.target_role,
         job_description=job_description,
+        tailored_json=tailored_json_str,
     )
     return templates.TemplateResponse(
         request,
@@ -493,11 +500,13 @@ async def resume_revise(
     cv_text = get_cv_as_text(CV_PATH)
     tailored = tailor_cv(cv_text, parent.job_description, revision_context)
     filename = render_resume_pdf(tailored, RESUMES_DIR)
+    tailored_json_str = json.dumps(dataclasses.asdict(tailored))
     resume_id = record_resume(
         DB_PATH, filename, tailored.target_company, tailored.target_role,
         job_description=parent.job_description,
         parent_id=parent_resume_id,
         feedback_summary=feedback_summary,
+        tailored_json=tailored_json_str,
     )
     return templates.TemplateResponse(
         request,
@@ -542,13 +551,111 @@ async def resume_revise_from_history(
     cv_text = get_cv_as_text(CV_PATH)
     tailored = tailor_cv(cv_text, job_description, revision_context)
     filename = render_resume_pdf(tailored, RESUMES_DIR)
-    record_resume(
+    tailored_json_str = json.dumps(dataclasses.asdict(tailored))
+    new_id = record_resume(
         DB_PATH, filename, tailored.target_company, tailored.target_role,
         job_description=job_description,
         parent_id=parent_resume_id,
         feedback_summary=feedback_summary,
+        tailored_json=tailored_json_str,
     )
-    return RedirectResponse("/resume/history", status_code=303)
+    return RedirectResponse(f"/resume/{new_id}/edit", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Resume Live Edit
+# ---------------------------------------------------------------------------
+
+def _parse_resume_form(form: dict) -> TailoredCV:
+    """Reconstruct a TailoredCV from indexed live-edit form fields."""
+    personal = {
+        "name": form.get("name", ""),
+        "email": form.get("email", ""),
+        "location": form.get("location", ""),
+        "linkedin": form.get("linkedin", ""),
+        "github": form.get("github", ""),
+        "summary": form.get("summary", ""),
+    }
+
+    experience = []
+    for i in itertools.count():
+        if f"exp_{i}_company" not in form:
+            break
+        bullets = [
+            form[k] for k in sorted(form)
+            if _re.match(rf"exp_{i}_bullet_\d+$", k)
+        ]
+        experience.append({
+            "company": form[f"exp_{i}_company"],
+            "role": form[f"exp_{i}_role"],
+            "start": form[f"exp_{i}_start"],
+            "end": form[f"exp_{i}_end"],
+            "bullets": [b for b in bullets if b.strip()],
+        })
+
+    projects = []
+    for i in itertools.count():
+        if f"proj_{i}_name" not in form:
+            break
+        bullets = [
+            form[k] for k in sorted(form)
+            if _re.match(rf"proj_{i}_bullet_\d+$", k)
+        ]
+        projects.append({
+            "name": form[f"proj_{i}_name"],
+            "description": form[f"proj_{i}_description"],
+            "bullets": [b for b in bullets if b.strip()],
+        })
+
+    def _split(val: str) -> list[str]:
+        return [s.strip() for s in val.split(",") if s.strip()]
+
+    skills = {
+        "languages": _split(form.get("languages", "")),
+        "frameworks": _split(form.get("frameworks", "")),
+        "tools": _split(form.get("tools", "")),
+        "other": _split(form.get("other", "")),
+    }
+
+    education = json.loads(form.get("education_json", "[]"))
+
+    return TailoredCV(
+        personal=personal,
+        experience=experience,
+        projects=projects,
+        education=education,
+        skills=skills,
+        target_role=form.get("target_role", ""),
+        target_company=form.get("target_company", ""),
+    )
+
+
+@app.get("/resume/{resume_id}/edit")
+async def resume_edit_page(request: Request, resume_id: int):
+    """Render the live edit page for a generated resume."""
+    record = get_resume(DB_PATH, resume_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    cv = get_tailored_cv(DB_PATH, resume_id)
+    return templates.TemplateResponse(
+        request,
+        "resume_edit.html",
+        {"record": record, "cv": cv},
+    )
+
+
+@app.post("/resume/{resume_id}/save")
+async def resume_edit_save(request: Request, resume_id: int):
+    """Save live edits: re-render PDF and update stored JSON. No LLM call."""
+    record = get_resume(DB_PATH, resume_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    form = dict(await request.form())
+    tailored = _parse_resume_form(form)
+    filename = render_resume_pdf(tailored, RESUMES_DIR)
+    tailored_json_str = json.dumps(dataclasses.asdict(tailored))
+    update_resume_after_edit(DB_PATH, resume_id, tailored_json_str, filename)
+    return RedirectResponse(f"/resume/{resume_id}/edit", status_code=303)
 
 
 # ---------------------------------------------------------------------------

@@ -318,4 +318,128 @@ def test_resume_revise_from_history_redirects_to_history(mock_wc, mock_tailor, m
         "feedback": "Shorter summary.",
     }, follow_redirects=False)
     assert response.status_code == 303
-    assert response.headers["location"] == "/resume/history"
+    assert response.headers["location"].startswith("/resume/")
+    assert response.headers["location"].endswith("/edit")
+
+
+# ---------------------------------------------------------------------------
+# /resume/{id}/edit
+# ---------------------------------------------------------------------------
+
+SAMPLE_TAILORED_JSON = json.dumps({
+    "personal": {"name": "Jane Doe", "email": "jane@example.com", "location": "London", "linkedin": "", "github": "", "summary": "ML engineer with 5 years experience."},
+    "experience": [{"company": "Acme", "role": "ML Engineer", "start": "2023-01", "end": "present", "bullets": ["Built pipelines."]}],
+    "projects": [],
+    "education": [{"institution": "Uni", "degree": "BSc", "year": "2021"}],
+    "skills": {"languages": ["Python"], "frameworks": [], "tools": [], "other": []},
+    "target_role": "ML Engineer",
+    "target_company": "Cohere",
+})
+
+
+@patch("agents.wellbeing._client")
+def test_resume_edit_page_returns_200_with_summary(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "cohere.pdf", "Cohere", "ML Engineer", tailored_json=SAMPLE_TAILORED_JSON)
+    client = TestClient(main_module.app)
+    response = client.get(f"/resume/{rid}/edit")
+    assert response.status_code == 200
+    assert "ML engineer with 5 years experience." in response.text
+
+
+@patch("agents.wellbeing._client")
+def test_resume_edit_page_shows_fallback_for_no_json(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "cohere.pdf", "Cohere", "ML Engineer")  # no tailored_json
+    client = TestClient(main_module.app)
+    response = client.get(f"/resume/{rid}/edit")
+    assert response.status_code == 200
+    assert "Live editing is not available" in response.text
+
+
+@patch("agents.wellbeing._client")
+def test_resume_edit_page_404_for_missing(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    client = make_client(setup)
+    response = client.get("/resume/9999/edit")
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# /resume/{id}/save
+# ---------------------------------------------------------------------------
+
+SAMPLE_EDIT_FORM = {
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "location": "London",
+    "linkedin": "",
+    "github": "",
+    "summary": "Updated summary.",
+    "exp_0_company": "Acme",
+    "exp_0_role": "ML Engineer",
+    "exp_0_start": "2023-01",
+    "exp_0_end": "present",
+    "exp_0_bullet_0": "Built pipelines.",
+    "exp_0_bullet_1": "",  # empty bullet — should be dropped
+    "languages": "Python, Go",
+    "frameworks": "",
+    "tools": "",
+    "other": "",
+    "education_json": '[{"institution": "Uni", "degree": "BSc", "year": "2021"}]',
+    "target_role": "ML Engineer",
+    "target_company": "Cohere",
+}
+
+
+@patch("web.main.render_resume_pdf", return_value="cohere_edited.pdf")
+@patch("agents.wellbeing._client")
+def test_resume_edit_save_redirects_to_edit_page(mock_wc, mock_pdf, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, resumes_dir, main_module = setup
+    os.makedirs(resumes_dir, exist_ok=True)
+    rid = record_resume(db, "cohere.pdf", "Cohere", "ML Engineer", tailored_json=SAMPLE_TAILORED_JSON)
+    client = TestClient(main_module.app)
+    response = client.post(f"/resume/{rid}/save", data=SAMPLE_EDIT_FORM, follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/resume/{rid}/edit"
+
+
+@patch("web.main.render_resume_pdf", return_value="cohere_edited.pdf")
+@patch("agents.wellbeing._client")
+def test_resume_edit_save_updates_db(mock_wc, mock_pdf, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, resumes_dir, main_module = setup
+    os.makedirs(resumes_dir, exist_ok=True)
+    rid = record_resume(db, "cohere.pdf", "Cohere", "ML Engineer", tailored_json=SAMPLE_TAILORED_JSON)
+    client = TestClient(main_module.app)
+    client.post(f"/resume/{rid}/save", data=SAMPLE_EDIT_FORM, follow_redirects=False)
+    updated = get_resume(db, rid)
+    assert updated.filename == "cohere_edited.pdf"
+    assert "Updated summary." in updated.tailored_json
+
+
+@patch("web.main.render_resume_pdf", return_value="cohere_edited.pdf")
+@patch("agents.wellbeing._client")
+def test_resume_edit_save_drops_empty_bullets(mock_wc, mock_pdf, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, resumes_dir, main_module = setup
+    os.makedirs(resumes_dir, exist_ok=True)
+    rid = record_resume(db, "cohere.pdf", "Cohere", "ML Engineer", tailored_json=SAMPLE_TAILORED_JSON)
+    client = TestClient(main_module.app)
+    client.post(f"/resume/{rid}/save", data=SAMPLE_EDIT_FORM, follow_redirects=False)
+    updated = get_resume(db, rid)
+    saved = json.loads(updated.tailored_json)
+    bullets = saved["experience"][0]["bullets"]
+    assert "" not in bullets
+    assert all(b.strip() for b in bullets)
+
+
+@patch("agents.wellbeing._client")
+def test_resume_edit_save_404_for_missing(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    client = make_client(setup)
+    response = client.post("/resume/9999/save", data=SAMPLE_EDIT_FORM)
+    assert response.status_code == 404

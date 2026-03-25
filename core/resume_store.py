@@ -16,6 +16,7 @@ class ResumeRecord:
     job_description: Optional[str] = None
     parent_id: Optional[int] = None
     feedback_summary: Optional[str] = None
+    tailored_json: Optional[str] = None
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
@@ -43,11 +44,12 @@ def init_resumes_table(db_path: str) -> None:
 
 
 def migrate_resumes(db_path: str) -> None:
-    """Add revision columns to the resumes table if they don't exist (idempotent)."""
+    """Add revision columns and tailored_json to the resumes table if they don't exist (idempotent)."""
     new_cols = {
         "job_description": "TEXT",
         "parent_id": "INTEGER",
         "feedback_summary": "TEXT",
+        "tailored_json": "TEXT",
     }
     with _connect(db_path) as conn:
         cols = {row["name"] for row in conn.execute("PRAGMA table_info(resumes)").fetchall()}
@@ -64,15 +66,16 @@ def record_resume(
     job_description: Optional[str] = None,
     parent_id: Optional[int] = None,
     feedback_summary: Optional[str] = None,
+    tailored_json: Optional[str] = None,
 ) -> int:
     """Insert a new resume record and return its id."""
     generated_at = datetime.now().isoformat()
     with _connect(db_path) as conn:
         cursor = conn.execute(
             """INSERT INTO resumes
-               (filename, company, role, generated_at, job_description, parent_id, feedback_summary)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (filename, company, role, generated_at, job_description, parent_id, feedback_summary),
+               (filename, company, role, generated_at, job_description, parent_id, feedback_summary, tailored_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (filename, company, role, generated_at, job_description, parent_id, feedback_summary, tailored_json),
         )
         return cursor.lastrowid
 
@@ -122,6 +125,41 @@ def link_application(db_path: str, resume_id: int, application_id: int) -> None:
             "UPDATE resumes SET application_id = ? WHERE id = ?",
             (application_id, resume_id),
         )
+
+
+def update_resume_json(db_path: str, resume_id: int, tailored_json: str) -> None:
+    """Overwrite the tailored_json field for an existing resume record."""
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE resumes SET tailored_json = ? WHERE id = ?",
+            (tailored_json, resume_id),
+        )
+
+
+def update_resume_after_edit(
+    db_path: str,
+    resume_id: int,
+    tailored_json: str,
+    filename: str,
+) -> None:
+    """Update tailored_json and filename after a live edit re-render."""
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE resumes SET tailored_json = ?, filename = ? WHERE id = ?",
+            (tailored_json, filename, resume_id),
+        )
+
+
+def get_tailored_cv(db_path: str, resume_id: int) -> Optional[dict]:
+    """
+    Return the parsed tailored_json dict for a resume record, or None if
+    the record does not exist or has no stored JSON.
+    """
+    import json
+    record = get_resume(db_path, resume_id)
+    if record is None or record.tailored_json is None:
+        return None
+    return json.loads(record.tailored_json)
 
 
 def delete_resume_record(db_path: str, resume_id: int) -> None:

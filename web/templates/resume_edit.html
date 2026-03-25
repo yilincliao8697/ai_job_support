@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Resume — AI Job Support{% endblock %}
+
+{% block content %}
+<style>
+  main { max-width: 1200px !important; }
+  @media (max-width: 768px) {
+    .edit-layout { flex-direction: column !important; }
+  }
+</style>
+
+<div class="flex justify-between align-center" style="margin-bottom: 0.25rem;">
+  <a href="/resume/history" class="btn btn-secondary">← Resume history</a>
+</div>
+
+{% if cv is none %}
+<div class="card">
+  <p>Live editing is not available for this resume — it was generated before this feature was added.</p>
+  {% if record.job_description %}
+  <p style="margin-bottom: 0.75rem;">Use the AI revision form below to regenerate with feedback.</p>
+  <details open>
+    <summary style="cursor: pointer; font-size: 0.9rem; color: #555;">Ask AI to revise this resume</summary>
+    <form method="post" action="/resume/revise-from-history" style="margin-top: 0.75rem;">
+      <input type="hidden" name="parent_resume_id" value="{{ record.id }}">
+      <input type="hidden" name="job_description" value="{{ record.job_description }}">
+      <label for="ai-feedback-fallback">What would you like changed?</label>
+      <textarea id="ai-feedback-fallback" name="feedback"
+                placeholder="e.g. Emphasise LLM infrastructure experience, shorten the summary, remove the 2019 internship."
+                style="min-height: 80px;" required></textarea>
+      <button type="submit" class="btn btn-secondary">Revise with AI →</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+
+{% else %}
+
+<div style="text-align: center; margin-bottom: 1.5rem;">
+  <h1 style="margin-top: 0; margin-bottom: 0.25rem;">{{ record.company }} / {{ record.role }}</h1>
+  <p class="text-muted" style="font-size: 0.9rem; margin: 0;">
+    Edit fields directly and save, or use the AI revision section below to regenerate with feedback.
+  </p>
+</div>
+
+<div class="edit-layout" style="display: flex; gap: 2rem; align-items: flex-start;">
+
+  {# ── Left: PDF preview ── #}
+  <div style="flex: 1; position: sticky; top: 1rem;">
+    <iframe src="/resume/view/{{ record.filename }}"
+            style="width: 100%; height: 80vh; border: 1px solid #ddd; border-radius: 4px;">
+    </iframe>
+  </div>
+
+  {# ── Right: form ── #}
+  <div style="flex: 1;">
+
+    {# ── AI revision ── #}
+    {% if record.job_description %}
+    <details style="margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-size: 0.9rem; color: #555;">Ask AI to revise this resume</summary>
+      <form method="post" action="/resume/revise-from-history" style="margin-top: 0.75rem;">
+        <input type="hidden" name="parent_resume_id" value="{{ record.id }}">
+        <input type="hidden" name="job_description" value="{{ record.job_description }}">
+        <label for="ai-feedback">What would you like changed?</label>
+        <textarea id="ai-feedback" name="feedback"
+                  placeholder="e.g. Emphasise LLM infrastructure experience, shorten the summary, remove the 2019 internship."
+                  style="min-height: 80px;" required></textarea>
+        <button type="submit" class="btn btn-secondary">Revise with AI →</button>
+      </form>
+    </details>
+    {% endif %}
+
+    <form method="post" action="/resume/{{ record.id }}/save">
+
+      <input type="hidden" name="target_role" value="{{ cv.target_role }}">
+      <input type="hidden" name="target_company" value="{{ cv.target_company }}">
+      <input type="hidden" name="education_json" value='{{ cv.education | tojson }}'>
+
+      {# ── Personal ── #}
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="margin-top: 0;">Personal</h2>
+
+        <label>Name</label>
+        <input type="text" name="name" value="{{ cv.personal.name }}">
+
+        <label>Email</label>
+        <input type="text" name="email" value="{{ cv.personal.email }}">
+
+        <label>Location</label>
+        <input type="text" name="location" value="{{ cv.personal.location }}">
+
+        <label>LinkedIn</label>
+        <input type="text" name="linkedin" value="{{ cv.personal.linkedin }}">
+
+        <label>GitHub</label>
+        <input type="text" name="github" value="{{ cv.personal.github }}">
+
+        <label>Summary</label>
+        <textarea name="summary" style="min-height: 80px;">{{ cv.personal.summary }}</textarea>
+      </div>
+
+      {# ── Experience ── #}
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="margin-top: 0;">Experience</h2>
+
+        {% for exp in cv.experience %}
+        {% set i = loop.index0 %}
+        <fieldset style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+          <legend>{{ exp.company }} — {{ exp.role }}</legend>
+
+          <label>Company</label>
+          <input type="text" name="exp_{{ i }}_company" value="{{ exp.company }}">
+
+          <label>Role</label>
+          <input type="text" name="exp_{{ i }}_role" value="{{ exp.role }}">
+
+          <div class="flex gap-1">
+            <div style="flex: 1;">
+              <label>Start</label>
+              <input type="text" name="exp_{{ i }}_start" value="{{ exp.start }}">
+            </div>
+            <div style="flex: 1;">
+              <label>End</label>
+              <input type="text" name="exp_{{ i }}_end" value="{{ exp.end }}">
+            </div>
+          </div>
+
+          <label style="margin-top: 0.75rem;">Bullets</label>
+          {% for bullet in exp.bullets %}
+          <textarea name="exp_{{ i }}_bullet_{{ loop.index0 }}"
+                    style="min-height: 48px; margin-bottom: 0.4rem;">{{ bullet }}</textarea>
+          {% endfor %}
+        </fieldset>
+        {% endfor %}
+      </div>
+
+      {# ── Projects ── #}
+      {% if cv.projects %}
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="margin-top: 0;">Projects</h2>
+
+        {% for proj in cv.projects %}
+        {% set i = loop.index0 %}
+        <fieldset style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+          <legend>{{ proj.name }}</legend>
+
+          <label>Name</label>
+          <input type="text" name="proj_{{ i }}_name" value="{{ proj.name }}">
+
+          <label>Description</label>
+          <input type="text" name="proj_{{ i }}_description" value="{{ proj.description }}">
+
+          <label style="margin-top: 0.75rem;">Bullets</label>
+          {% for bullet in proj.bullets %}
+          <textarea name="proj_{{ i }}_bullet_{{ loop.index0 }}"
+                    style="min-height: 48px; margin-bottom: 0.4rem;">{{ bullet }}</textarea>
+          {% endfor %}
+        </fieldset>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {# ── Skills ── #}
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="margin-top: 0;">Skills</h2>
+        <p class="text-muted" style="font-size: 0.85rem; margin-top: 0;">Comma-separated values.</p>
+
+        <label>Languages</label>
+        <input type="text" name="languages" value="{{ cv.skills.languages | join(', ') }}">
+
+        <label>Frameworks</label>
+        <input type="text" name="frameworks" value="{{ cv.skills.frameworks | join(', ') }}">
+
+        <label>Tools</label>
+        <input type="text" name="tools" value="{{ cv.skills.tools | join(', ') }}">
+
+        <label>Other</label>
+        <input type="text" name="other" value="{{ cv.skills.other | join(', ') }}">
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <button type="submit" class="btn btn-primary">Save &amp; re-render PDF</button>
+      </div>
+
+    </form>
+
+  </div>{# end right column #}
+</div>{# end edit-layout #}
+{% endif %}
+{% endblock %}
