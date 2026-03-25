@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, date
@@ -40,6 +41,7 @@ ACTIVE_STATUSES = ("applied", "phone_screen", "interview")
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
+    os.makedirs(os.path.dirname(db_path), exist_ok=True) if os.path.dirname(db_path) else None
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
