@@ -11,8 +11,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: "Georgia", "Times New Roman", serif;
-      font-size: 10.5pt;
+      font-family: {{ cv.font_family }};
+      font-size: {{ cv.font_size }}pt;
       color: #1a1a1a;
       line-height: 1.45;
     }
@@ -129,6 +129,7 @@
       {% if cv.personal.location %}<span>{{ cv.personal.location }}</span>{% endif %}
       {% if cv.personal.linkedin %}<a href="{{ cv.personal.linkedin }}">{{ cv.personal.linkedin | replace("https://", "") }}</a>{% endif %}
       {% if cv.personal.github %}<a href="{{ cv.personal.github }}">{{ cv.personal.github | replace("https://", "") }}</a>{% endif %}
+      {% if cv.personal.website %}<a href="{{ cv.personal.website }}">{{ cv.personal.website | replace("https://", "") }}</a>{% endif %}
     </div>
   </div>
 
@@ -181,6 +182,27 @@
         <li>{{ bullet }}</li>
         {% endfor %}
       </ul>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Awards -->
+  {% if cv.awards %}
+  <div class="section">
+    <div class="section-title">Awards</div>
+    {% for award in cv.awards %}
+    <div class="entry">
+      <div class="entry-header">
+        <span class="entry-title">{{ award.title }}</span>
+        <span class="entry-meta">{{ award.date }}</span>
+      </div>
+      {% if award.issuer %}
+      <div class="entry-sub">{{ award.issuer }}</div>
+      {% endif %}
+      {% if award.description %}
+      <div class="entry-sub">{{ award.description }}</div>
       {% endif %}
     </div>
     {% endfor %}

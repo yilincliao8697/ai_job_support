@@ -574,6 +574,7 @@ def _parse_resume_form(form: dict) -> TailoredCV:
         "location": form.get("location", ""),
         "linkedin": form.get("linkedin", ""),
         "github": form.get("github", ""),
+        "website": form.get("website", ""),
         "summary": form.get("summary", ""),
     }
 
@@ -617,7 +618,35 @@ def _parse_resume_form(form: dict) -> TailoredCV:
         "other": _split(form.get("other", "")),
     }
 
-    education = json.loads(form.get("education_json", "[]"))
+    awards = []
+    for i in itertools.count():
+        if f"award_{i}_title" not in form:
+            break
+        awards.append({
+            "title": form[f"award_{i}_title"],
+            "issuer": form.get(f"award_{i}_issuer", ""),
+            "date": form.get(f"award_{i}_date", ""),
+            "description": form.get(f"award_{i}_description", ""),
+        })
+
+    education = []
+    for i in itertools.count():
+        if f"edu_{i}_institution" not in form:
+            break
+        education.append({
+            "institution": form[f"edu_{i}_institution"],
+            "degree": form.get(f"edu_{i}_degree", ""),
+            "year": form.get(f"edu_{i}_year", ""),
+            "gpa": form.get(f"edu_{i}_gpa", ""),
+        })
+
+    try:
+        font_size = float(form.get("font_size", 10.5))
+        font_size = max(8.0, min(13.0, font_size))
+    except ValueError:
+        font_size = 10.5
+
+    font_family = form.get("font_family", "Georgia, 'Times New Roman', serif")
 
     return TailoredCV(
         personal=personal,
@@ -627,6 +656,9 @@ def _parse_resume_form(form: dict) -> TailoredCV:
         skills=skills,
         target_role=form.get("target_role", ""),
         target_company=form.get("target_company", ""),
+        awards=awards,
+        font_size=font_size,
+        font_family=font_family,
     )
 
 

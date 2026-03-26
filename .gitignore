@@ -1,6 +1,9 @@
 # Environment
 .env
 
+# Personal CV (use data/master_cv.example.yaml as a template)
+data/master_cv.yaml
+
 # Database
 data/jobs.db
 

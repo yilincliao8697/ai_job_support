@@ -8,6 +8,31 @@
   @media (max-width: 768px) {
     .edit-layout { flex-direction: column !important; }
   }
+  .btn-remove {
+    padding: 0.15rem 0.45rem;
+    font-size: 0.78rem;
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #c00;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+  .btn-remove:hover { background: #fff0f0; border-color: #c00; }
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .bullet-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    margin-bottom: 0.4rem;
+  }
+  .bullet-row textarea { flex: 1; margin-bottom: 0 !important; }
 </style>
 
 <div class="flex justify-between align-center" style="margin-bottom: 0.25rem;">
@@ -55,6 +80,16 @@
   {# ── Right: form ── #}
   <div style="flex: 1;">
 
+    {# ── Job description viewer ── #}
+    {% if record.job_description %}
+    <details style="margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-size: 0.9rem; color: #555;">View original job description</summary>
+      <pre style="margin-top: 0.75rem; white-space: pre-wrap; font-size: 0.85rem; color: #444;
+                  background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 4px;
+                  padding: 0.75rem; max-height: 300px; overflow-y: auto;">{{ record.job_description }}</pre>
+    </details>
+    {% endif %}
+
     {# ── AI revision ── #}
     {% if record.job_description %}
     <details style="margin-bottom: 1.5rem;">
@@ -71,11 +106,10 @@
     </details>
     {% endif %}
 
-    <form method="post" action="/resume/{{ record.id }}/save">
+    <form id="edit-form" method="post" action="/resume/{{ record.id }}/save">
 
       <input type="hidden" name="target_role" value="{{ cv.target_role }}">
       <input type="hidden" name="target_company" value="{{ cv.target_company }}">
-      <input type="hidden" name="education_json" value='{{ cv.education | tojson }}'>
 
       {# ── Personal ── #}
       <div class="card" style="margin-bottom: 1.5rem;">
@@ -96,8 +130,49 @@
         <label>GitHub</label>
         <input type="text" name="github" value="{{ cv.personal.github }}">
 
+        <label>Website</label>
+        <input type="text" name="website" value="{{ cv.personal.website }}">
+
         <label>Summary</label>
         <textarea name="summary" style="min-height: 80px;">{{ cv.personal.summary }}</textarea>
+      </div>
+
+      {# ── Typography ── #}
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="margin-top: 0;">Typography</h2>
+        <p class="text-muted" style="font-size: 0.85rem; margin-top: 0;">Changes take effect when you save and re-render.</p>
+
+        <div class="flex gap-1">
+          <div style="flex: 1;">
+            <label>Font size (pt)</label>
+            <input type="number" name="font_size"
+                   value="{{ cv.font_size if cv.font_size else 10.5 }}"
+                   min="8" max="13" step="0.5"
+                   style="width: 100%;">
+          </div>
+          <div style="flex: 2;">
+            <label>Font family</label>
+            <select name="font_family" style="width: 100%;">
+              {% set current = cv.font_family if cv.font_family else "Georgia, 'Times New Roman', serif" %}
+              <option value="Georgia, 'Times New Roman', serif"
+                {% if current == "Georgia, 'Times New Roman', serif" %}selected{% endif %}>
+                Georgia (serif — default)
+              </option>
+              <option value="'Times New Roman', Times, serif"
+                {% if current == "'Times New Roman', Times, serif" %}selected{% endif %}>
+                Times New Roman (serif — classic)
+              </option>
+              <option value="Arial, Helvetica, sans-serif"
+                {% if current == "Arial, Helvetica, sans-serif" %}selected{% endif %}>
+                Arial (sans-serif — modern)
+              </option>
+              <option value="Garamond, 'EB Garamond', serif"
+                {% if current == "Garamond, 'EB Garamond', serif" %}selected{% endif %}>
+                Garamond (serif — elegant)
+              </option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {# ── Experience ── #}
@@ -106,60 +181,120 @@
 
         {% for exp in cv.experience %}
         {% set i = loop.index0 %}
-        <fieldset style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
-          <legend>{{ exp.company }} — {{ exp.role }}</legend>
+        <fieldset data-section="exp" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+
+          <div class="section-header">
+            <strong>{{ exp.company }} — {{ exp.role }}</strong>
+            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+          </div>
 
           <label>Company</label>
-          <input type="text" name="exp_{{ i }}_company" value="{{ exp.company }}">
+          <input type="text" name="exp_{{ i }}_company" data-key="company" value="{{ exp.company }}">
 
           <label>Role</label>
-          <input type="text" name="exp_{{ i }}_role" value="{{ exp.role }}">
+          <input type="text" name="exp_{{ i }}_role" data-key="role" value="{{ exp.role }}">
 
           <div class="flex gap-1">
             <div style="flex: 1;">
               <label>Start</label>
-              <input type="text" name="exp_{{ i }}_start" value="{{ exp.start }}">
+              <input type="text" name="exp_{{ i }}_start" data-key="start" value="{{ exp.start }}">
             </div>
             <div style="flex: 1;">
               <label>End</label>
-              <input type="text" name="exp_{{ i }}_end" value="{{ exp.end }}">
+              <input type="text" name="exp_{{ i }}_end" data-key="end" value="{{ exp.end }}">
             </div>
           </div>
 
           <label style="margin-top: 0.75rem;">Bullets</label>
           {% for bullet in exp.bullets %}
-          <textarea name="exp_{{ i }}_bullet_{{ loop.index0 }}"
-                    style="min-height: 48px; margin-bottom: 0.4rem;">{{ bullet }}</textarea>
+          <div class="bullet-row">
+            <textarea name="exp_{{ i }}_bullet_{{ loop.index0 }}" data-key="bullet"
+                      style="min-height: 48px;">{{ bullet }}</textarea>
+            <button type="button" class="btn-remove" onclick="removeBullet(this)" title="Remove bullet">✕</button>
+          </div>
           {% endfor %}
+          <button type="button" class="btn btn-secondary"
+                  style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.2rem 0.6rem;"
+                  onclick="addBullet(this)">+ Add bullet</button>
+
         </fieldset>
         {% endfor %}
+        <button type="button" class="btn btn-secondary"
+                style="font-size: 0.85rem; padding: 0.3rem 0.7rem;"
+                onclick="addEntry('exp', this)">+ Add entry</button>
       </div>
 
       {# ── Projects ── #}
-      {% if cv.projects %}
       <div class="card" style="margin-bottom: 1.5rem;">
         <h2 style="margin-top: 0;">Projects</h2>
 
         {% for proj in cv.projects %}
         {% set i = loop.index0 %}
-        <fieldset style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
-          <legend>{{ proj.name }}</legend>
+        <fieldset data-section="proj" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+
+          <div class="section-header">
+            <strong>{{ proj.name }}</strong>
+            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+          </div>
 
           <label>Name</label>
-          <input type="text" name="proj_{{ i }}_name" value="{{ proj.name }}">
+          <input type="text" name="proj_{{ i }}_name" data-key="name" value="{{ proj.name }}">
 
           <label>Description</label>
-          <input type="text" name="proj_{{ i }}_description" value="{{ proj.description }}">
+          <input type="text" name="proj_{{ i }}_description" data-key="description" value="{{ proj.description }}">
 
           <label style="margin-top: 0.75rem;">Bullets</label>
           {% for bullet in proj.bullets %}
-          <textarea name="proj_{{ i }}_bullet_{{ loop.index0 }}"
-                    style="min-height: 48px; margin-bottom: 0.4rem;">{{ bullet }}</textarea>
+          <div class="bullet-row">
+            <textarea name="proj_{{ i }}_bullet_{{ loop.index0 }}" data-key="bullet"
+                      style="min-height: 48px;">{{ bullet }}</textarea>
+            <button type="button" class="btn-remove" onclick="removeBullet(this)" title="Remove bullet">✕</button>
+          </div>
           {% endfor %}
+          <button type="button" class="btn btn-secondary"
+                  style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.2rem 0.6rem;"
+                  onclick="addBullet(this)">+ Add bullet</button>
+
         </fieldset>
         {% endfor %}
+        <button type="button" class="btn btn-secondary"
+                style="font-size: 0.85rem; padding: 0.3rem 0.7rem;"
+                onclick="addEntry('proj', this)">+ Add entry</button>
       </div>
-      {% endif %}
+
+      {# ── Awards ── #}
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="margin-top: 0;">Awards</h2>
+
+        {% for award in cv.awards %}
+        {% set i = loop.index0 %}
+        <fieldset data-section="award" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+
+          <div class="section-header">
+            <strong>{{ award.title }}</strong>
+            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+          </div>
+
+          <label>Title</label>
+          <input type="text" name="award_{{ i }}_title" data-key="title" value="{{ award.title }}">
+
+          <label>Issuer</label>
+          <input type="text" name="award_{{ i }}_issuer" data-key="issuer" value="{{ award.issuer }}">
+
+          <label>Date</label>
+          <input type="text" name="award_{{ i }}_date" data-key="date" value="{{ award.date }}"
+                 placeholder="YYYY-MM">
+
+          <label>Description</label>
+          <textarea name="award_{{ i }}_description" data-key="description"
+                    style="min-height: 48px;">{{ award.description }}</textarea>
+
+        </fieldset>
+        {% endfor %}
+        <button type="button" class="btn btn-secondary"
+                style="font-size: 0.85rem; padding: 0.3rem 0.7rem;"
+                onclick="addEntry('award', this)">+ Add entry</button>
+      </div>
 
       {# ── Skills ── #}
       <div class="card" style="margin-bottom: 1.5rem;">
@@ -179,13 +314,209 @@
         <input type="text" name="other" value="{{ cv.skills.other | join(', ') }}">
       </div>
 
+      {# ── Education ── #}
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="margin-top: 0;">Education</h2>
+
+        {% for edu in cv.education %}
+        {% set i = loop.index0 %}
+        <fieldset data-section="edu" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+
+          <div class="section-header">
+            <strong>{{ edu.institution }}</strong>
+            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+          </div>
+
+          <label>Institution</label>
+          <input type="text" name="edu_{{ i }}_institution" data-key="institution" value="{{ edu.institution }}">
+
+          <label>Degree</label>
+          <input type="text" name="edu_{{ i }}_degree" data-key="degree" value="{{ edu.degree }}">
+
+          <div class="flex gap-1">
+            <div style="flex: 1;">
+              <label>Year</label>
+              <input type="text" name="edu_{{ i }}_year" data-key="year" value="{{ edu.year }}">
+            </div>
+            <div style="flex: 1;">
+              <label>GPA</label>
+              <input type="text" name="edu_{{ i }}_gpa" data-key="gpa" value="{{ edu.gpa if edu.gpa else '' }}">
+            </div>
+          </div>
+
+        </fieldset>
+        {% endfor %}
+        <button type="button" class="btn btn-secondary"
+                style="font-size: 0.85rem; padding: 0.3rem 0.7rem;"
+                onclick="addEntry('edu', this)">+ Add entry</button>
+      </div>
+
       <div style="margin-bottom: 1.5rem;">
         <button type="submit" class="btn btn-primary">Save &amp; re-render PDF</button>
       </div>
+
+      {# ── Blank entry templates (cloned by JS on "Add entry" click) ── #}
+
+      <template id="tpl-exp">
+        <fieldset data-section="exp" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+          <div class="section-header">
+            <strong>New Entry</strong>
+            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+          </div>
+          <label>Company</label>
+          <input type="text" name="" data-key="company" value="">
+          <label>Role</label>
+          <input type="text" name="" data-key="role" value="">
+          <div class="flex gap-1">
+            <div style="flex: 1;">
+              <label>Start</label>
+              <input type="text" name="" data-key="start" value="" placeholder="YYYY-MM">
+            </div>
+            <div style="flex: 1;">
+              <label>End</label>
+              <input type="text" name="" data-key="end" value="" placeholder="YYYY-MM or present">
+            </div>
+          </div>
+          <label style="margin-top: 0.75rem;">Bullets</label>
+          <div class="bullet-row">
+            <textarea name="" data-key="bullet" style="min-height: 48px;"></textarea>
+            <button type="button" class="btn-remove" onclick="removeBullet(this)" title="Remove bullet">✕</button>
+          </div>
+          <button type="button" class="btn btn-secondary"
+                  style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.2rem 0.6rem;"
+                  onclick="addBullet(this)">+ Add bullet</button>
+        </fieldset>
+      </template>
+
+      <template id="tpl-proj">
+        <fieldset data-section="proj" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+          <div class="section-header">
+            <strong>New Entry</strong>
+            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+          </div>
+          <label>Name</label>
+          <input type="text" name="" data-key="name" value="">
+          <label>Description</label>
+          <input type="text" name="" data-key="description" value="">
+          <label style="margin-top: 0.75rem;">Bullets</label>
+          <div class="bullet-row">
+            <textarea name="" data-key="bullet" style="min-height: 48px;"></textarea>
+            <button type="button" class="btn-remove" onclick="removeBullet(this)" title="Remove bullet">✕</button>
+          </div>
+          <button type="button" class="btn btn-secondary"
+                  style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.2rem 0.6rem;"
+                  onclick="addBullet(this)">+ Add bullet</button>
+        </fieldset>
+      </template>
+
+      <template id="tpl-award">
+        <fieldset data-section="award" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+          <div class="section-header">
+            <strong>New Entry</strong>
+            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+          </div>
+          <label>Title</label>
+          <input type="text" name="" data-key="title" value="">
+          <label>Issuer</label>
+          <input type="text" name="" data-key="issuer" value="">
+          <label>Date</label>
+          <input type="text" name="" data-key="date" value="" placeholder="YYYY-MM">
+          <label>Description</label>
+          <textarea name="" data-key="description" style="min-height: 48px;"></textarea>
+        </fieldset>
+      </template>
+
+      <template id="tpl-edu">
+        <fieldset data-section="edu" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
+          <div class="section-header">
+            <strong>New Entry</strong>
+            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+          </div>
+          <label>Institution</label>
+          <input type="text" name="" data-key="institution" value="">
+          <label>Degree</label>
+          <input type="text" name="" data-key="degree" value="">
+          <div class="flex gap-1">
+            <div style="flex: 1;">
+              <label>Year</label>
+              <input type="text" name="" data-key="year" value="">
+            </div>
+            <div style="flex: 1;">
+              <label>GPA</label>
+              <input type="text" name="" data-key="gpa" value="">
+            </div>
+          </div>
+        </fieldset>
+      </template>
 
     </form>
 
   </div>{# end right column #}
 </div>{# end edit-layout #}
+
+<script>
+  function removeSection(btn) {
+    btn.closest('fieldset').remove();
+  }
+
+  function removeBullet(btn) {
+    btn.closest('.bullet-row').remove();
+  }
+
+  function addEntry(sectionType, btn) {
+    var tpl = document.getElementById('tpl-' + sectionType);
+    var clone = tpl.content.cloneNode(true);
+    btn.parentElement.insertBefore(clone, btn);
+  }
+
+  function addBullet(btn) {
+    var fieldset = btn.closest('fieldset');
+    var row = document.createElement('div');
+    row.className = 'bullet-row';
+    row.innerHTML =
+      '<textarea name="" data-key="bullet" style="min-height: 48px;"></textarea>' +
+      '<button type="button" class="btn-remove" onclick="removeBullet(this)" title="Remove bullet">✕</button>';
+    fieldset.insertBefore(row, btn);
+  }
+
+  // Re-index all field names before submit so the server-side parser
+  // (which stops at the first gap) sees sequential indices.
+  document.getElementById('edit-form').addEventListener('submit', function () {
+    document.querySelectorAll('fieldset[data-section="exp"]').forEach(function (fs, i) {
+      fs.querySelectorAll('[data-key]').forEach(function (el) {
+        if (el.dataset.key !== 'bullet') {
+          el.name = 'exp_' + i + '_' + el.dataset.key;
+        }
+      });
+      fs.querySelectorAll('[data-key="bullet"]').forEach(function (el, j) {
+        el.name = 'exp_' + i + '_bullet_' + j;
+      });
+    });
+
+    document.querySelectorAll('fieldset[data-section="proj"]').forEach(function (fs, i) {
+      fs.querySelectorAll('[data-key]').forEach(function (el) {
+        if (el.dataset.key !== 'bullet') {
+          el.name = 'proj_' + i + '_' + el.dataset.key;
+        }
+      });
+      fs.querySelectorAll('[data-key="bullet"]').forEach(function (el, j) {
+        el.name = 'proj_' + i + '_bullet_' + j;
+      });
+    });
+
+    document.querySelectorAll('fieldset[data-section="award"]').forEach(function (fs, i) {
+      fs.querySelectorAll('[data-key]').forEach(function (el) {
+        el.name = 'award_' + i + '_' + el.dataset.key;
+      });
+    });
+
+    document.querySelectorAll('fieldset[data-section="edu"]').forEach(function (fs, i) {
+      fs.querySelectorAll('[data-key]').forEach(function (el) {
+        el.name = 'edu_' + i + '_' + el.dataset.key;
+      });
+    });
+  });
+</script>
+
 {% endif %}
 {% endblock %}

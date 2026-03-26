@@ -104,6 +104,39 @@ def test_tailor_cv_without_revision_context_excludes_revision_block(mock_client)
     assert "REVISION INSTRUCTIONS" not in prompt
 
 
+def test_tailored_cv_awards_defaults_to_empty_list():
+    cv = TailoredCV(
+        personal={}, experience=[], projects=[], education=[],
+        skills={}, target_role="", target_company="",
+    )
+    assert cv.awards == []
+
+
+def test_tailored_cv_stores_awards_when_passed():
+    awards = [{"title": "Best Project", "issuer": "UC Berkeley", "date": "2025-08", "description": "Top capstone."}]
+    cv = TailoredCV(
+        personal={}, experience=[], projects=[], education=[],
+        skills={}, target_role="", target_company="", awards=awards,
+    )
+    assert cv.awards == awards
+
+
+@patch("agents.resume_tailor._client")
+def test_tailor_cv_populates_awards_from_response(mock_client):
+    response_with_awards = {**VALID_RESPONSE, "awards": [{"title": "Hackathon Winner", "issuer": "Y-Combinator", "date": "2025-11", "description": "First place."}]}
+    mock_client.return_value.messages.create.return_value = _mock_response(response_with_awards)
+    result = tailor_cv(SAMPLE_CV_TEXT, SAMPLE_JD)
+    assert len(result.awards) == 1
+    assert result.awards[0]["title"] == "Hackathon Winner"
+
+
+@patch("agents.resume_tailor._client")
+def test_tailor_cv_awards_empty_when_omitted_from_response(mock_client):
+    mock_client.return_value.messages.create.return_value = _mock_response(VALID_RESPONSE)
+    result = tailor_cv(SAMPLE_CV_TEXT, SAMPLE_JD)
+    assert result.awards == []
+
+
 @patch("agents.resume_tailor._client")
 def test_summarise_feedback_returns_nonempty_string(mock_client):
     block = MagicMock()

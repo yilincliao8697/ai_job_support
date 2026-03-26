@@ -1,0 +1,40 @@
+personal:
+  name: "Your Name"
+  email: "you@email.com"
+  location: "City, Country"
+  linkedin: "https://linkedin.com/in/yourhandle"
+  github: "https://github.com/yourhandle"
+  summary: "One paragraph professional summary."
+
+experience:
+  - company: "Company Name"
+    role: "Job Title"
+    start: "2023-01"
+    end: "present"
+    tags: ["ml", "python"]
+    bullets:
+      - "Led development of X, resulting in Y% improvement in Z."
+
+projects:
+  - name: "Project Name"
+    description: "One line description."
+    tags: ["llm", "python"]
+    bullets:
+      - "Built an end-to-end system using X, Y, Z."
+
+awards:
+  - title: "Award Name"
+    issuer: "Issuing Organisation"
+    date: "YYYY-MM"
+    description: "One line description of what the award is for."
+
+education:
+  - institution: "University Name"
+    degree: "BSc Computer Science"
+    year: "2021"
+
+skills:
+  languages: ["Python", "SQL"]
+  frameworks: ["FastAPI", "PyTorch"]
+  tools: ["Docker", "Git"]
+  other: ["LLM fine-tuning", "RAG pipelines"]

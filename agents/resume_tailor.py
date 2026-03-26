@@ -32,6 +32,9 @@ class TailoredCV:
     skills: dict
     target_role: str
     target_company: str
+    awards: list[dict] = field(default_factory=list)
+    font_size: float = 10.5
+    font_family: str = "Georgia, 'Times New Roman', serif"
 
 
 def _client() -> anthropic.Anthropic:
@@ -64,6 +67,7 @@ The candidate has already reviewed a previous version of this resume and request
 - Rewrite bullet points to mirror the language and keywords in the job description
 - Keep bullets concise and impact-focused (start with strong action verbs)
 - Aim for a one-page resume where possible
+- Include awards if present in the CV and space allows; omit if needed to fit one page
 - Extract the target role title and company name from the job description
 - Return ONLY valid JSON matching the schema below — no markdown, no explanation
 
@@ -75,6 +79,7 @@ OUTPUT SCHEMA:
     "location": "string",
     "linkedin": "string",
     "github": "string",
+    "website": "string",
     "summary": "string (rewritten to target this specific role)"
   }},
   "experience": [
@@ -106,6 +111,14 @@ OUTPUT SCHEMA:
     "tools": ["string"],
     "other": ["string"]
   }},
+  "awards": [
+    {{
+      "title": "string",
+      "issuer": "string",
+      "date": "string",
+      "description": "string"
+    }}
+  ],
   "target_role": "string (job title from the JD)",
   "target_company": "string (company name from the JD)"
 }}
@@ -143,6 +156,7 @@ JOB DESCRIPTION:
         skills=data["skills"],
         target_role=data["target_role"],
         target_company=data["target_company"],
+        awards=data.get("awards", []),
     )
 
 
