@@ -35,6 +35,7 @@ class TailoredCV:
     awards: list[dict] = field(default_factory=list)
     font_size: float = 10.5
     font_family: str = "Georgia, 'Times New Roman', serif"
+    section_order: list[str] = field(default_factory=lambda: ["experience", "projects", "awards", "education", "skills"])
 
 
 def _client() -> anthropic.Anthropic:
@@ -69,6 +70,7 @@ The candidate has already reviewed a previous version of this resume and request
 - Aim for a one-page resume where possible
 - Include awards if present in the CV and space allows; omit if needed to fit one page
 - Extract the target role title and company name from the job description
+- Return section_order as the default sequence unless the job description strongly suggests a different emphasis
 - Return ONLY valid JSON matching the schema below — no markdown, no explanation
 
 OUTPUT SCHEMA:
@@ -121,7 +123,8 @@ OUTPUT SCHEMA:
     }}
   ],
   "target_role": "string (job title from the JD)",
-  "target_company": "string (company name from the JD)"
+  "target_company": "string (company name from the JD)",
+  "section_order": ["experience", "projects", "awards", "education", "skills"]
 }}
 
 CANDIDATE CV:
@@ -158,6 +161,7 @@ JOB DESCRIPTION:
         target_role=data["target_role"],
         target_company=data["target_company"],
         awards=data.get("awards", []),
+        section_order=data.get("section_order", ["experience", "projects", "awards", "education", "skills"]),
     )
 
 

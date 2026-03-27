@@ -20,6 +20,17 @@
     line-height: 1.4;
   }
   .btn-remove:hover { background: #fff0f0; border-color: #c00; }
+  .btn-move {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.75rem;
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #666;
+    line-height: 1.4;
+  }
+  .btn-move:hover { background: #f0f0f0; }
   .section-header {
     display: flex;
     justify-content: space-between;
@@ -175,9 +186,20 @@
         </div>
       </div>
 
+      {# ── Movable section cards — rendered in cv.section_order ── #}
+      {% set _order = cv.section_order if cv.section_order else ["experience", "projects", "awards", "education", "skills"] %}
+      {% for section in _order %}
+
+      {% if section == "experience" %}
       {# ── Experience ── #}
-      <div class="card" style="margin-bottom: 1.5rem;">
-        <h2 style="margin-top: 0;">Experience</h2>
+      <div class="card" data-movable data-section-id="experience" style="margin-bottom: 1.5rem;">
+        <div class="section-header" style="margin-bottom: 0.75rem;">
+          <h2 style="margin-top: 0; margin-bottom: 0;">Experience</h2>
+          <div style="display: flex; gap: 0.25rem;">
+            <button type="button" class="btn-move" onclick="moveSectionUp(this)" title="Move section up">▲</button>
+            <button type="button" class="btn-move" onclick="moveSectionDown(this)" title="Move section down">▼</button>
+          </div>
+        </div>
 
         {% for exp in cv.experience %}
         {% set i = loop.index0 %}
@@ -185,7 +207,11 @@
 
           <div class="section-header">
             <strong>{{ exp.company }} — {{ exp.role }}</strong>
-            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            <div style="display: flex; gap: 0.25rem; align-items: center;">
+              <button type="button" class="btn-move" onclick="moveEntryUp(this)" title="Move up">▲</button>
+              <button type="button" class="btn-move" onclick="moveEntryDown(this)" title="Move down">▼</button>
+              <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            </div>
           </div>
 
           <label>Company</label>
@@ -224,9 +250,16 @@
                 onclick="addEntry('exp', this)">+ Add entry</button>
       </div>
 
+      {% elif section == "projects" %}
       {# ── Projects ── #}
-      <div class="card" style="margin-bottom: 1.5rem;">
-        <h2 style="margin-top: 0;">Projects</h2>
+      <div class="card" data-movable data-section-id="projects" style="margin-bottom: 1.5rem;">
+        <div class="section-header" style="margin-bottom: 0.75rem;">
+          <h2 style="margin-top: 0; margin-bottom: 0;">Projects</h2>
+          <div style="display: flex; gap: 0.25rem;">
+            <button type="button" class="btn-move" onclick="moveSectionUp(this)" title="Move section up">▲</button>
+            <button type="button" class="btn-move" onclick="moveSectionDown(this)" title="Move section down">▼</button>
+          </div>
+        </div>
 
         {% for proj in cv.projects %}
         {% set i = loop.index0 %}
@@ -234,7 +267,11 @@
 
           <div class="section-header">
             <strong>{{ proj.name }}</strong>
-            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            <div style="display: flex; gap: 0.25rem; align-items: center;">
+              <button type="button" class="btn-move" onclick="moveEntryUp(this)" title="Move up">▲</button>
+              <button type="button" class="btn-move" onclick="moveEntryDown(this)" title="Move down">▼</button>
+              <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            </div>
           </div>
 
           <label>Name</label>
@@ -262,9 +299,16 @@
                 onclick="addEntry('proj', this)">+ Add entry</button>
       </div>
 
+      {% elif section == "awards" %}
       {# ── Awards ── #}
-      <div class="card" style="margin-bottom: 1.5rem;">
-        <h2 style="margin-top: 0;">Awards</h2>
+      <div class="card" data-movable data-section-id="awards" style="margin-bottom: 1.5rem;">
+        <div class="section-header" style="margin-bottom: 0.75rem;">
+          <h2 style="margin-top: 0; margin-bottom: 0;">Awards</h2>
+          <div style="display: flex; gap: 0.25rem;">
+            <button type="button" class="btn-move" onclick="moveSectionUp(this)" title="Move section up">▲</button>
+            <button type="button" class="btn-move" onclick="moveSectionDown(this)" title="Move section down">▼</button>
+          </div>
+        </div>
 
         {% for award in cv.awards %}
         {% set i = loop.index0 %}
@@ -272,7 +316,11 @@
 
           <div class="section-header">
             <strong>{{ award.title }}</strong>
-            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            <div style="display: flex; gap: 0.25rem; align-items: center;">
+              <button type="button" class="btn-move" onclick="moveEntryUp(this)" title="Move up">▲</button>
+              <button type="button" class="btn-move" onclick="moveEntryDown(this)" title="Move down">▼</button>
+              <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            </div>
           </div>
 
           <label>Title</label>
@@ -296,27 +344,38 @@
                 onclick="addEntry('award', this)">+ Add entry</button>
       </div>
 
+      {% elif section == "skills" %}
       {# ── Skills ── #}
-      <div class="card" style="margin-bottom: 1.5rem;">
-        <h2 style="margin-top: 0;">Skills</h2>
+      <div class="card" data-movable data-section-id="skills" style="margin-bottom: 1.5rem;">
+        <div class="section-header" style="margin-bottom: 0.75rem;">
+          <h2 style="margin-top: 0; margin-bottom: 0;">Skills</h2>
+          <div style="display: flex; gap: 0.25rem;">
+            <button type="button" class="btn-move" onclick="moveSectionUp(this)" title="Move section up">▲</button>
+            <button type="button" class="btn-move" onclick="moveSectionDown(this)" title="Move section down">▼</button>
+          </div>
+        </div>
         <p class="text-muted" style="font-size: 0.85rem; margin-top: 0;">Comma-separated values.</p>
 
         <label>Languages</label>
         <input type="text" name="languages" value="{{ cv.skills.languages | join(', ') }}">
 
-        <label>Frameworks</label>
+        <label>Frameworks & Libraries</label>
         <input type="text" name="frameworks" value="{{ cv.skills.frameworks | join(', ') }}">
 
-        <label>Tools</label>
-        <input type="text" name="tools" value="{{ cv.skills.tools | join(', ') }}">
-
-        <label>Other</label>
+        <label>AI & Methods</label>
         <input type="text" name="other" value="{{ cv.skills.other | join(', ') }}">
       </div>
 
+      {% elif section == "education" %}
       {# ── Education ── #}
-      <div class="card" style="margin-bottom: 1.5rem;">
-        <h2 style="margin-top: 0;">Education</h2>
+      <div class="card" data-movable data-section-id="education" style="margin-bottom: 1.5rem;">
+        <div class="section-header" style="margin-bottom: 0.75rem;">
+          <h2 style="margin-top: 0; margin-bottom: 0;">Education</h2>
+          <div style="display: flex; gap: 0.25rem;">
+            <button type="button" class="btn-move" onclick="moveSectionUp(this)" title="Move section up">▲</button>
+            <button type="button" class="btn-move" onclick="moveSectionDown(this)" title="Move section down">▼</button>
+          </div>
+        </div>
 
         {% for edu in cv.education %}
         {% set i = loop.index0 %}
@@ -324,7 +383,11 @@
 
           <div class="section-header">
             <strong>{{ edu.institution }}</strong>
-            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            <div style="display: flex; gap: 0.25rem; align-items: center;">
+              <button type="button" class="btn-move" onclick="moveEntryUp(this)" title="Move up">▲</button>
+              <button type="button" class="btn-move" onclick="moveEntryDown(this)" title="Move down">▼</button>
+              <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            </div>
           </div>
 
           <label>Institution</label>
@@ -355,6 +418,12 @@
                 onclick="addEntry('edu', this)">+ Add entry</button>
       </div>
 
+      {% endif %}
+      {% endfor %}
+
+      <input type="hidden" name="section_order" id="section-order-input"
+             value="{{ _order | join(',') }}">
+
       <div style="margin-bottom: 1.5rem;">
         <button type="submit" class="btn btn-primary">Save &amp; re-render PDF</button>
       </div>
@@ -365,7 +434,11 @@
         <fieldset data-section="exp" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
           <div class="section-header">
             <strong>New Entry</strong>
-            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            <div style="display: flex; gap: 0.25rem; align-items: center;">
+              <button type="button" class="btn-move" onclick="moveEntryUp(this)" title="Move up">▲</button>
+              <button type="button" class="btn-move" onclick="moveEntryDown(this)" title="Move down">▼</button>
+              <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            </div>
           </div>
           <label>Company</label>
           <input type="text" name="" data-key="company" value="">
@@ -396,7 +469,11 @@
         <fieldset data-section="proj" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
           <div class="section-header">
             <strong>New Entry</strong>
-            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            <div style="display: flex; gap: 0.25rem; align-items: center;">
+              <button type="button" class="btn-move" onclick="moveEntryUp(this)" title="Move up">▲</button>
+              <button type="button" class="btn-move" onclick="moveEntryDown(this)" title="Move down">▼</button>
+              <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            </div>
           </div>
           <label>Name</label>
           <input type="text" name="" data-key="name" value="">
@@ -417,7 +494,11 @@
         <fieldset data-section="award" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
           <div class="section-header">
             <strong>New Entry</strong>
-            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            <div style="display: flex; gap: 0.25rem; align-items: center;">
+              <button type="button" class="btn-move" onclick="moveEntryUp(this)" title="Move up">▲</button>
+              <button type="button" class="btn-move" onclick="moveEntryDown(this)" title="Move down">▼</button>
+              <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            </div>
           </div>
           <label>Title</label>
           <input type="text" name="" data-key="title" value="">
@@ -434,7 +515,11 @@
         <fieldset data-section="edu" style="margin-bottom: 1.5rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
           <div class="section-header">
             <strong>New Entry</strong>
-            <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            <div style="display: flex; gap: 0.25rem; align-items: center;">
+              <button type="button" class="btn-move" onclick="moveEntryUp(this)" title="Move up">▲</button>
+              <button type="button" class="btn-move" onclick="moveEntryDown(this)" title="Move down">▼</button>
+              <button type="button" class="btn-remove" onclick="removeSection(this)">✕ Remove entry</button>
+            </div>
           </div>
           <label>Institution</label>
           <input type="text" name="" data-key="institution" value="">
@@ -465,6 +550,42 @@
 <script>
   function removeSection(btn) {
     btn.closest('fieldset').remove();
+  }
+
+  function moveEntryUp(btn) {
+    var fs = btn.closest('fieldset');
+    var prev = fs.previousElementSibling;
+    while (prev && prev.tagName !== 'FIELDSET') prev = prev.previousElementSibling;
+    if (prev) fs.parentNode.insertBefore(fs, prev);
+  }
+
+  function moveEntryDown(btn) {
+    var fs = btn.closest('fieldset');
+    var next = fs.nextElementSibling;
+    while (next && next.tagName !== 'FIELDSET') next = next.nextElementSibling;
+    if (next) fs.parentNode.insertBefore(next, fs);
+  }
+
+  function moveSectionUp(btn) {
+    var card = btn.closest('[data-movable]');
+    var prev = card.previousElementSibling;
+    while (prev && !prev.hasAttribute('data-movable')) prev = prev.previousElementSibling;
+    if (prev) card.parentNode.insertBefore(card, prev);
+    updateSectionOrder();
+  }
+
+  function moveSectionDown(btn) {
+    var card = btn.closest('[data-movable]');
+    var next = card.nextElementSibling;
+    while (next && !next.hasAttribute('data-movable')) next = next.nextElementSibling;
+    if (next) card.parentNode.insertBefore(next, card);
+    updateSectionOrder();
+  }
+
+  function updateSectionOrder() {
+    var order = Array.from(document.querySelectorAll('[data-movable]'))
+      .map(function(el) { return el.dataset.sectionId; });
+    document.getElementById('section-order-input').value = order.join(',');
   }
 
   function removeBullet(btn) {

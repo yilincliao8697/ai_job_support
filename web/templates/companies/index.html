@@ -5,6 +5,24 @@
 {% block content %}
 <h1>Companies</h1>
 
+<div class="card" style="margin-bottom: 1.5rem; padding: 0.75rem 1rem;">
+  <form hx-post="/intelligence/watchlist/add"
+        hx-target="body"
+        hx-swap="none"
+        hx-on::after-request="window.location.reload()"
+        style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;">
+    <div style="flex: 2; min-width: 160px;">
+      <label style="font-size: 0.85rem; margin-bottom: 0.25rem; display: block;">Company name</label>
+      <input type="text" name="company_name" placeholder="e.g. American Express" required style="margin-bottom: 0;">
+    </div>
+    <div style="flex: 1; min-width: 120px;">
+      <label style="font-size: 0.85rem; margin-bottom: 0.25rem; display: block;">Sector <span class="text-muted">(optional)</span></label>
+      <input type="text" name="sector" placeholder="e.g. Finance" style="margin-bottom: 0;">
+    </div>
+    <button type="submit" class="btn btn-primary" style="white-space: nowrap;">+ Add company</button>
+  </form>
+</div>
+
 {% if grouped %}
   {% for sector, companies in grouped.items() %}
   <details open>
@@ -17,6 +35,6 @@
   </details>
   {% endfor %}
 {% else %}
-  <p class="text-muted">No companies yet. Add some from the <a href="/intelligence">Intelligence</a> page.</p>
+  <p class="text-muted">No companies yet. Use the form above to add one, or paste a job description on the <a href="/intelligence">Intelligence</a> page to find similar companies.</p>
 {% endif %}
 {% endblock %}

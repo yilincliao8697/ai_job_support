@@ -148,8 +148,11 @@
   </div>
   {% endif %}
 
+  {% set _order = cv.section_order if cv.section_order else ["experience", "projects", "awards", "education", "skills"] %}
+  {% for section in _order %}
+
+  {% if section == "experience" and cv.experience %}
   <!-- Experience -->
-  {% if cv.experience %}
   <div class="section">
     <div class="section-title">Experience</div>
     {% for exp in cv.experience %}
@@ -169,10 +172,9 @@
     </div>
     {% endfor %}
   </div>
-  {% endif %}
 
+  {% elif section == "projects" and cv.projects %}
   <!-- Projects -->
-  {% if cv.projects %}
   <div class="section">
     <div class="section-title">Projects</div>
     {% for proj in cv.projects %}
@@ -193,10 +195,9 @@
     </div>
     {% endfor %}
   </div>
-  {% endif %}
 
+  {% elif section == "awards" and cv.awards %}
   <!-- Awards -->
-  {% if cv.awards %}
   <div class="section">
     <div class="section-title">Awards</div>
     {% for award in cv.awards %}
@@ -214,40 +215,37 @@
     </div>
     {% endfor %}
   </div>
-  {% endif %}
 
+  {% elif section == "education" and cv.education %}
   <!-- Education -->
-  {% if cv.education %}
   <div class="section">
     <div class="section-title">Education</div>
     {% for edu in cv.education %}
     <div class="edu-entry">
       <span class="edu-date">{% if edu.start %}{% if edu.end %}{{ edu.start }}–{{ edu.end }}{% else %}{{ edu.start }}{% endif %}{% else %}{{ edu.year }}{% endif %}</span>
       <strong>{{ edu.degree }}</strong>
-      <div class="entry-sub">{{ edu.institution }}</div>
+      <div class="entry-sub">{{ edu.institution }}{% if edu.gpa %} &nbsp;·&nbsp; GPA: {{ edu.gpa }}{% endif %}</div>
     </div>
     {% endfor %}
   </div>
-  {% endif %}
 
+  {% elif section == "skills" and cv.skills %}
   <!-- Skills -->
-  {% if cv.skills %}
   <div class="section">
     <div class="section-title">Skills</div>
     {% if cv.skills.languages %}
     <div class="skills-row"><span class="skills-label">Languages:</span> {{ cv.skills.languages | join(", ") }}</div>
     {% endif %}
     {% if cv.skills.frameworks %}
-    <div class="skills-row"><span class="skills-label">Frameworks:</span> {{ cv.skills.frameworks | join(", ") }}</div>
-    {% endif %}
-    {% if cv.skills.tools %}
-    <div class="skills-row"><span class="skills-label">Tools:</span> {{ cv.skills.tools | join(", ") }}</div>
+    <div class="skills-row"><span class="skills-label">Frameworks & Libraries:</span> {{ cv.skills.frameworks | join(", ") }}</div>
     {% endif %}
     {% if cv.skills.other %}
-    <div class="skills-row"><span class="skills-label">Other:</span> {{ cv.skills.other | join(", ") }}</div>
+    <div class="skills-row"><span class="skills-label">AI & Methods:</span> {{ cv.skills.other | join(", ") }}</div>
     {% endif %}
   </div>
+
   {% endif %}
+  {% endfor %}
 
 </body>
 </html>

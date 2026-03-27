@@ -652,6 +652,9 @@ def _parse_resume_form(form: dict) -> TailoredCV:
 
     font_family = form.get("font_family", "Georgia, 'Times New Roman', serif")
 
+    raw_order = form.get("section_order", "experience,projects,awards,education,skills")
+    section_order = [s.strip() for s in raw_order.split(",") if s.strip()]
+
     return TailoredCV(
         personal=personal,
         experience=experience,
@@ -663,6 +666,7 @@ def _parse_resume_form(form: dict) -> TailoredCV:
         awards=awards,
         font_size=font_size,
         font_family=font_family,
+        section_order=section_order,
     )
 
 
