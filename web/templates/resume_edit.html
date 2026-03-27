@@ -45,7 +45,7 @@
   {% if record.job_description %}
   <p style="margin-bottom: 0.75rem;">Use the AI revision form below to regenerate with feedback.</p>
   <details open>
-    <summary style="cursor: pointer; font-size: 0.9rem; color: #555;">Ask AI to revise this resume</summary>
+    <summary style="cursor: pointer; font-size: 0.9rem; color: #555;">Ask AI to revise this resume <span style="font-size: 0.8rem; color: #999; font-style: italic;">(still improving — use with caution)</span></summary>
     <form method="post" action="/resume/revise-from-history" style="margin-top: 0.75rem;">
       <input type="hidden" name="parent_resume_id" value="{{ record.id }}">
       <input type="hidden" name="job_description" value="{{ record.job_description }}">
@@ -72,7 +72,7 @@
 
   {# ── Left: PDF preview ── #}
   <div style="flex: 1; position: sticky; top: 1rem;">
-    <iframe src="/resume/view/{{ record.filename }}"
+    <iframe src="/resume/view/{{ record.filename }}?v={{ cache_bust }}"
             style="width: 100%; height: 80vh; border: 1px solid #ddd; border-radius: 4px;">
     </iframe>
   </div>
@@ -93,7 +93,7 @@
     {# ── AI revision ── #}
     {% if record.job_description %}
     <details style="margin-bottom: 1.5rem;">
-      <summary style="cursor: pointer; font-size: 0.9rem; color: #555;">Ask AI to revise this resume</summary>
+      <summary style="cursor: pointer; font-size: 0.9rem; color: #555;">Ask AI to revise this resume <span style="font-size: 0.8rem; color: #999; font-style: italic;">(still improving — use with caution)</span></summary>
       <form method="post" action="/resume/revise-from-history" style="margin-top: 0.75rem;">
         <input type="hidden" name="parent_resume_id" value="{{ record.id }}">
         <input type="hidden" name="job_description" value="{{ record.job_description }}">
@@ -335,8 +335,12 @@
 
           <div class="flex gap-1">
             <div style="flex: 1;">
-              <label>Year</label>
-              <input type="text" name="edu_{{ i }}_year" data-key="year" value="{{ edu.year }}">
+              <label>Start year</label>
+              <input type="text" name="edu_{{ i }}_start" data-key="start" value="{{ edu.start if edu.start is defined and edu.start else edu.year }}" placeholder="2019">
+            </div>
+            <div style="flex: 1;">
+              <label>End year</label>
+              <input type="text" name="edu_{{ i }}_end" data-key="end" value="{{ edu.end if edu.end is defined and edu.end else '' }}" placeholder="2021 (blank if ongoing)">
             </div>
             <div style="flex: 1;">
               <label>GPA</label>
@@ -438,8 +442,12 @@
           <input type="text" name="" data-key="degree" value="">
           <div class="flex gap-1">
             <div style="flex: 1;">
-              <label>Year</label>
-              <input type="text" name="" data-key="year" value="">
+              <label>Start year</label>
+              <input type="text" name="" data-key="start" value="" placeholder="2019">
+            </div>
+            <div style="flex: 1;">
+              <label>End year</label>
+              <input type="text" name="" data-key="end" value="" placeholder="2021 (blank if ongoing)">
             </div>
             <div style="flex: 1;">
               <label>GPA</label>

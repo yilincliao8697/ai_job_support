@@ -1,5 +1,6 @@
 import os
 import re
+import uuid
 from datetime import date
 from pathlib import Path
 
@@ -35,7 +36,8 @@ def render_resume_pdf(tailored_cv: TailoredCV, output_dir: str) -> str:
 
     company_slug = _slugify(tailored_cv.target_company) or "company"
     today = date.today().isoformat()
-    filename = f"{company_slug}_{today}.pdf"
+    uid = uuid.uuid4().hex[:6]
+    filename = f"{company_slug}_{today}_{uid}.pdf"
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)

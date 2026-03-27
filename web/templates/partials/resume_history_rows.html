@@ -31,16 +31,4 @@
 <tr>
   <td colspan="5" id="preview-{{ record.id }}" style="padding: 0; border: none;"></td>
 </tr>
-{% if record.job_description %}
-<tr>
-  <td colspan="5" style="padding: 0.25rem 1rem 0.75rem; border-top: none;">
-    <details>
-      <summary style="cursor: pointer; font-size: 0.8rem; color: #777;">View job description</summary>
-      <pre style="margin-top: 0.5rem; white-space: pre-wrap; font-size: 0.8rem; color: #444;
-                  background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 4px;
-                  padding: 0.75rem; max-height: 200px; overflow-y: auto;">{{ record.job_description }}</pre>
-    </details>
-  </td>
-</tr>
-{% endif %}
 {% endfor %}

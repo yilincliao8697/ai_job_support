@@ -113,9 +113,16 @@
 
     /* Education */
     .edu-entry {
-      display: flex;
-      justify-content: space-between;
       font-size: 10pt;
+      margin-bottom: 2pt;
+      overflow: hidden;
+    }
+
+    .edu-date {
+      float: right;
+      font-style: italic;
+      color: #555;
+      font-size: 9pt;
     }
   </style>
 </head>
@@ -215,8 +222,9 @@
     <div class="section-title">Education</div>
     {% for edu in cv.education %}
     <div class="edu-entry">
-      <span><strong>{{ edu.degree }}</strong> — {{ edu.institution }}</span>
-      <span class="entry-meta">{{ edu.year }}</span>
+      <span class="edu-date">{% if edu.start %}{% if edu.end %}{{ edu.start }}–{{ edu.end }}{% else %}{{ edu.start }}{% endif %}{% else %}{{ edu.year }}{% endif %}</span>
+      <strong>{{ edu.degree }}</strong>
+      <div class="entry-sub">{{ edu.institution }}</div>
     </div>
     {% endfor %}
   </div>

@@ -102,7 +102,8 @@ OUTPUT SCHEMA:
     {{
       "institution": "string",
       "degree": "string",
-      "year": "string"
+      "start": "string (year, e.g. 2019)",
+      "end": "string (year or empty if ongoing, e.g. 2021)"
     }}
   ],
   "skills": {{

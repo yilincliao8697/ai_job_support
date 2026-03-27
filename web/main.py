@@ -446,7 +446,10 @@ async def resume_view(filename: str):
     return FileResponse(
         file_path,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'inline; filename="{safe_name}"'},
+        headers={
+            "Content-Disposition": f'inline; filename="{safe_name}"',
+            "Cache-Control": "no-store",
+        },
     )
 
 
@@ -636,7 +639,8 @@ def _parse_resume_form(form: dict) -> TailoredCV:
         education.append({
             "institution": form[f"edu_{i}_institution"],
             "degree": form.get(f"edu_{i}_degree", ""),
-            "year": form.get(f"edu_{i}_year", ""),
+            "start": form.get(f"edu_{i}_start", ""),
+            "end": form.get(f"edu_{i}_end", ""),
             "gpa": form.get(f"edu_{i}_gpa", ""),
         })
 
@@ -672,7 +676,7 @@ async def resume_edit_page(request: Request, resume_id: int):
     return templates.TemplateResponse(
         request,
         "resume_edit.html",
-        {"record": record, "cv": cv},
+        {"record": record, "cv": cv, "cache_bust": int(_datetime.now().timestamp())},
     )
 
 

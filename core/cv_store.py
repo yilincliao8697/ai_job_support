@@ -45,7 +45,10 @@ def get_cv_as_text(cv_path: str) -> str:
 
     lines.append("\n=== EDUCATION ===")
     for edu in cv.get("education", []):
-        lines.append(f"{edu.get('degree', '')} — {edu.get('institution', '')} ({edu.get('year', '')})")
+        start = edu.get("start", edu.get("year", ""))
+        end = edu.get("end", "")
+        date_str = f"{start}–{end}" if end else start
+        lines.append(f"{edu.get('degree', '')} — {edu.get('institution', '')} ({date_str})")
 
     skills = cv.get("skills", {})
     lines.append("\n=== SKILLS ===")
