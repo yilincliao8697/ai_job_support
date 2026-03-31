@@ -55,4 +55,17 @@
   <p>No applications yet. <a href="/applications/new">Add your first one.</a></p>
 </div>
 {% endif %}
+
+{% if flash_encouragement %}
+<div id="encouragement-toast"
+     style="position: fixed; bottom: 1.5rem; right: 1.5rem; max-width: 320px;
+            background: white; border: 1px solid #ddd; border-radius: 8px;
+            padding: 1rem 1.25rem; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            z-index: 100; line-height: 1.6; font-size: 0.9rem; color: #333;">
+  <button onclick="document.getElementById('encouragement-toast').remove()"
+          style="float: right; background: none; border: none; cursor: pointer;
+                 font-size: 1rem; color: #999; margin: -0.25rem -0.25rem 0 0.5rem;">✕</button>
+  {{ flash_encouragement }}
+</div>
+{% endif %}
 {% endblock %}

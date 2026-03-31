@@ -14,6 +14,7 @@ from core.resume_store import (
     update_resume_json,
     update_resume_after_edit,
     get_tailored_cv,
+    toggle_resume_star,
 )
 
 
@@ -205,3 +206,32 @@ def test_get_tailored_cv_returns_none_when_json_is_null(db_path):
 
 def test_get_tailored_cv_returns_none_for_missing_id(db_path):
     assert get_tailored_cv(db_path, 9999) is None
+
+
+# ---------------------------------------------------------------------------
+# toggle_resume_star
+# ---------------------------------------------------------------------------
+
+def test_toggle_resume_star_sets_starred(db_path):
+    rid = record_resume(db_path, "stripe.pdf", "Stripe", "Engineer")
+    new_val = toggle_resume_star(db_path, rid)
+    assert new_val == 1
+    assert get_resume(db_path, rid).starred == 1
+
+
+def test_toggle_resume_star_unsets_starred(db_path):
+    rid = record_resume(db_path, "stripe.pdf", "Stripe", "Engineer")
+    toggle_resume_star(db_path, rid)   # → 1
+    new_val = toggle_resume_star(db_path, rid)  # → 0
+    assert new_val == 0
+    assert get_resume(db_path, rid).starred == 0
+
+
+def test_list_resumes_order_unaffected_by_star(db_path):
+    r1 = record_resume(db_path, "first.pdf", "Alpha", "Engineer")
+    r2 = record_resume(db_path, "second.pdf", "Beta", "Engineer")
+    toggle_resume_star(db_path, r1)  # star the older one
+    resumes = list_resumes(db_path)
+    # Order is by date only — starring does not move records
+    assert resumes[0].id == r2
+    assert resumes[1].id == r1

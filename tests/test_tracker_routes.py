@@ -40,7 +40,7 @@ def test_applications_list_returns_200(temp_db):
 
 
 @patch("agents.wellbeing._client")
-def test_applications_new_post_shows_success(mock_client, temp_db):
+def test_applications_new_post_redirects(mock_client, temp_db):
     mock_client.return_value.messages.create.return_value = _mock_claude("Great application!")
     _, main_module = temp_db
     client = make_client(main_module)
@@ -52,8 +52,28 @@ def test_applications_new_post_shows_success(mock_client, temp_db):
             "date_applied": "2026-03-01",
             "status": "applied",
         },
+        follow_redirects=False,
     )
-    assert response.status_code == 200
+    assert response.status_code == 303
+    assert response.headers["location"] == "/applications"
+
+
+@patch("agents.wellbeing._client")
+def test_applications_new_post_sets_encouragement_cookie(mock_client, temp_db):
+    mock_client.return_value.messages.create.return_value = _mock_claude("Great application!")
+    _, main_module = temp_db
+    client = make_client(main_module)
+    response = client.post(
+        "/applications/new",
+        data={
+            "company": "Acme Corp",
+            "role_title": "ML Engineer",
+            "date_applied": "2026-03-01",
+            "status": "applied",
+        },
+        follow_redirects=False,
+    )
+    assert "flash_encouragement" in response.cookies
 
 
 @patch("agents.wellbeing._client")
@@ -72,6 +92,29 @@ def test_applications_new_post_creates_record(mock_client, temp_db):
     )
     response = client.get("/applications")
     assert "Cohere" in response.text
+
+
+@patch("agents.wellbeing._client")
+def test_applications_list_shows_toast_from_cookie(mock_client, temp_db):
+    mock_client.return_value.messages.create.return_value = _mock_claude()
+    _, main_module = temp_db
+    client = make_client(main_module)
+    client.cookies.set("flash_encouragement", "You did great!")
+    response = client.get("/applications")
+    assert "You did great!" in response.text
+
+
+@patch("agents.wellbeing._client")
+def test_applications_list_sends_delete_cookie_header(mock_client, temp_db):
+    mock_client.return_value.messages.create.return_value = _mock_claude()
+    _, main_module = temp_db
+    client = make_client(main_module)
+    client.cookies.set("flash_encouragement", "You did great!")
+    response = client.get("/applications")
+    # Server should respond with a Set-Cookie header that expires the cookie
+    set_cookie = response.headers.get("set-cookie", "")
+    assert "flash_encouragement" in set_cookie
+    assert "max-age=0" in set_cookie.lower()
 
 
 def test_applications_show_all_returns_200(temp_db):

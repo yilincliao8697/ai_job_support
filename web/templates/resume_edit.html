@@ -48,6 +48,14 @@
 
 <div class="flex justify-between align-center" style="margin-bottom: 0.25rem;">
   <a href="/resume/history" class="btn btn-secondary">← Resume history</a>
+  <div id="star-toggle">
+    <button class="btn btn-secondary"
+            hx-post="/resume/{{ record.id }}/star"
+            hx-target="#star-toggle"
+            hx-swap="outerHTML">
+      {{ "★ Starred" if record.starred else "☆ Star" }}
+    </button>
+  </div>
 </div>
 
 {% if cv is none %}

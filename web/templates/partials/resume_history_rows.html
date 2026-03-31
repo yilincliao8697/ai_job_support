@@ -6,6 +6,11 @@
   <td>{% if record.application_id %}Linked{% else %}—{% endif %}</td>
   <td>
     <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: nowrap;">
+      <button class="btn btn-secondary"
+              style="font-size: 0.8rem; padding: 0.25rem 0.6rem;"
+              hx-post="/resume/history/{{ record.id }}/star"
+              hx-target="this"
+              hx-swap="outerHTML">{{ "★" if record.starred else "☆" }}</button>
       <a href="/resume/download/{{ record.filename }}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;" download>Download</a>
       <button class="btn btn-secondary"
               style="font-size: 0.8rem; padding: 0.25rem 0.6rem;"

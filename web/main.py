@@ -33,6 +33,7 @@ from core.resume_store import (
     init_resumes_table, migrate_resumes, record_resume, link_application,
     list_resumes, delete_resume_record, get_resume, get_revision_chain,
     update_resume_json, update_resume_after_edit, get_tailored_cv,
+    toggle_resume_star,
 )
 
 load_dotenv()
@@ -106,12 +107,16 @@ async def dashboard(request: Request):
 async def applications_list(request: Request, show_all: int = 0):
     """List applications — active only by default."""
     active_only = show_all != 1
+    flash = request.cookies.get("flash_encouragement", "")
     applications = list_applications(DB_PATH, active_only=active_only)
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "applications/list.html",
-        {"applications": applications, "show_all": not active_only},
+        {"applications": applications, "show_all": not active_only, "flash_encouragement": flash},
     )
+    if flash:
+        response.delete_cookie("flash_encouragement")
+    return response
 
 
 @app.get("/applications/new")
@@ -123,6 +128,10 @@ async def applications_new_form(
     resume_id: int = 0,
 ):
     """Render new application form, optionally pre-filled from query params."""
+    resume_record = get_resume(DB_PATH, resume_id) if resume_id else None
+    if resume_record:
+        company = resume_record.company
+        role = resume_record.role
     return templates.TemplateResponse(
         request,
         "applications/form.html",
@@ -134,6 +143,7 @@ async def applications_new_form(
             "prefill_role": role,
             "prefill_resume": resume,
             "resume_id": resume_id,
+            "resume_record": resume_record,
         },
     )
 
@@ -166,11 +176,9 @@ async def applications_new_submit(
     if resume_id:
         link_application(DB_PATH, resume_id, application_id)
     encouragement = get_encouragement_on_log(company, role_title, USER_BACKGROUND)
-    return templates.TemplateResponse(
-        request,
-        "applications/success.html",
-        {"company": company, "role_title": role_title, "encouragement": encouragement},
-    )
+    response = RedirectResponse("/applications", status_code=303)
+    response.set_cookie("flash_encouragement", encouragement, max_age=60, httponly=True)
+    return response
 
 
 @app.get("/applications/{application_id}/edit")
@@ -191,6 +199,7 @@ async def applications_edit_form(request: Request, application_id: int):
             "prefill_company": "",
             "prefill_role": "",
             "prefill_resume": "",
+            "resume_record": None,
         },
     )
 
@@ -478,6 +487,39 @@ async def resume_history_delete(request: Request, resume_id: int):
     return templates.TemplateResponse(
         request, "partials/resume_history_rows.html", {"resumes": resumes}
     )
+
+
+@app.post("/resume/history/{resume_id}/star")
+async def resume_history_star(resume_id: int):
+    """Toggle star from history page. Returns replacement star button only."""
+    from fastapi.responses import HTMLResponse
+    new_val = toggle_resume_star(DB_PATH, resume_id)
+    label = "★" if new_val else "☆"
+    html = (
+        f'<button class="btn btn-secondary"'
+        f' style="font-size: 0.8rem; padding: 0.25rem 0.6rem;"'
+        f' hx-post="/resume/history/{resume_id}/star"'
+        f' hx-target="this"'
+        f' hx-swap="outerHTML">{label}</button>'
+    )
+    return HTMLResponse(html)
+
+
+@app.post("/resume/{resume_id}/star")
+async def resume_star(resume_id: int):
+    """Toggle star from edit page. Returns replacement star-toggle div."""
+    from fastapi.responses import HTMLResponse
+    new_val = toggle_resume_star(DB_PATH, resume_id)
+    label = "★ Starred" if new_val else "☆ Star"
+    html = (
+        f'<div id="star-toggle">'
+        f'<button class="btn btn-secondary"'
+        f' hx-post="/resume/{resume_id}/star"'
+        f' hx-target="#star-toggle"'
+        f' hx-swap="outerHTML">{label}</button>'
+        f'</div>'
+    )
+    return HTMLResponse(html)
 
 
 def _build_revision_context(chain: list, new_summary: str) -> str:

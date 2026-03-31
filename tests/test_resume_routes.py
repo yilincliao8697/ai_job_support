@@ -443,3 +443,94 @@ def test_resume_edit_save_404_for_missing(mock_wc, setup):
     client = make_client(setup)
     response = client.post("/resume/9999/save", data=SAMPLE_EDIT_FORM)
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# /resume/history/{id}/star
+# ---------------------------------------------------------------------------
+
+@patch("agents.wellbeing._client")
+def test_resume_history_star_toggles_and_returns_button(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "stripe.pdf", "Stripe", "ML Engineer")
+    client = TestClient(main_module.app)
+    response = client.post(f"/resume/history/{rid}/star")
+    assert response.status_code == 200
+    assert "★" in response.text
+    from core.resume_store import get_resume as _get
+    assert _get(db, rid).starred == 1
+
+
+@patch("agents.wellbeing._client")
+def test_resume_history_star_untoggle(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "stripe.pdf", "Stripe", "ML Engineer")
+    client = TestClient(main_module.app)
+    client.post(f"/resume/history/{rid}/star")   # star
+    client.post(f"/resume/history/{rid}/star")   # unstar
+    from core.resume_store import get_resume as _get
+    assert _get(db, rid).starred == 0
+
+
+# ---------------------------------------------------------------------------
+# /resume/{id}/star  (edit page toggle)
+# ---------------------------------------------------------------------------
+
+@patch("agents.wellbeing._client")
+def test_resume_star_returns_star_toggle_div(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "stripe.pdf", "Stripe", "ML Engineer")
+    client = TestClient(main_module.app)
+    response = client.post(f"/resume/{rid}/star")
+    assert response.status_code == 200
+    assert "star-toggle" in response.text
+    assert "★ Starred" in response.text
+
+
+@patch("agents.wellbeing._client")
+def test_resume_star_shows_unstarred_label_on_second_toggle(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "stripe.pdf", "Stripe", "ML Engineer")
+    client = TestClient(main_module.app)
+    client.post(f"/resume/{rid}/star")  # star
+    response = client.post(f"/resume/{rid}/star")  # unstar
+    assert "☆ Star" in response.text
+
+
+# ---------------------------------------------------------------------------
+# /applications/new?resume_id — prefill from resume
+# ---------------------------------------------------------------------------
+
+@patch("agents.wellbeing._client")
+def test_applications_new_prefill_from_resume_id(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "cohere_2026.pdf", "Cohere", "ML Engineer")
+    client = TestClient(main_module.app)
+    response = client.get(f"/applications/new?resume_id={rid}")
+    assert response.status_code == 200
+    assert "Cohere" in response.text
+    assert "ML Engineer" in response.text
+
+
+@patch("agents.wellbeing._client")
+def test_applications_new_prefill_shows_resume_link(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    db, _, main_module = setup
+    rid = record_resume(db, "cohere_2026.pdf", "Cohere", "ML Engineer")
+    client = TestClient(main_module.app)
+    response = client.get(f"/applications/new?resume_id={rid}")
+    assert f"/resume/{rid}/edit" in response.text
+
+
+@patch("agents.wellbeing._client")
+def test_applications_new_no_resume_id_shows_text_input(mock_wc, setup):
+    mock_wc.return_value.messages.create.return_value = _mock_claude_wellbeing()
+    _, _, main_module = setup
+    client = TestClient(main_module.app)
+    response = client.get("/applications/new")
+    assert 'name="resume_filename"' in response.text

@@ -29,8 +29,17 @@
       {% endfor %}
     </select>
 
+    {% if resume_record %}
+    <label>Resume used</label>
+    <p style="margin: 0 0 1rem; font-size: 0.9rem;">
+      <a href="/resume/{{ resume_record.id }}/edit">{{ resume_record.company }} / {{ resume_record.role }}</a>
+      <span class="text-muted"> — generated {{ resume_record.generated_at[:10] }}</span>
+    </p>
+    <input type="hidden" name="resume_filename" value="{{ resume_record.filename }}">
+    {% else %}
     <label for="resume_filename">Resume used</label>
     <input type="text" id="resume_filename" name="resume_filename" value="{{ app.resume_filename if app else prefill_resume }}">
+    {% endif %}
 
     <label for="referral_contacts">People I know there</label>
     <input type="text" id="referral_contacts" name="referral_contacts" value="{{ app.referral_contacts if app else '' }}">

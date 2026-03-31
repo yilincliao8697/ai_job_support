@@ -17,6 +17,7 @@ class ResumeRecord:
     parent_id: Optional[int] = None
     feedback_summary: Optional[str] = None
     tailored_json: Optional[str] = None
+    starred: int = 0
 
 
 def _connect(db_path: str) -> sqlite3.Connection:
@@ -50,6 +51,7 @@ def migrate_resumes(db_path: str) -> None:
         "parent_id": "INTEGER",
         "feedback_summary": "TEXT",
         "tailored_json": "TEXT",
+        "starred": "INTEGER DEFAULT 0",
     }
     with _connect(db_path) as conn:
         cols = {row["name"] for row in conn.execute("PRAGMA table_info(resumes)").fetchall()}
@@ -166,3 +168,15 @@ def delete_resume_record(db_path: str, resume_id: int) -> None:
     """Delete the resume DB record. Does not delete the PDF file."""
     with _connect(db_path) as conn:
         conn.execute("DELETE FROM resumes WHERE id = ?", (resume_id,))
+
+
+def toggle_resume_star(db_path: str, resume_id: int) -> int:
+    """Flip the starred flag for a resume. Returns the new value (0 or 1)."""
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE resumes SET starred = 1 - starred WHERE id = ?", (resume_id,)
+        )
+        row = conn.execute(
+            "SELECT starred FROM resumes WHERE id = ?", (resume_id,)
+        ).fetchone()
+    return row["starred"] if row else 0

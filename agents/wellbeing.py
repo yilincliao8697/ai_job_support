@@ -13,17 +13,20 @@ def _client() -> anthropic.Anthropic:
 
 def get_encouragement_on_log(company: str, role_title: str, user_background: str) -> str:
     """
-    Generate a short, specific encouragement message when a new application is logged.
+    Generate a short encouragement message when a new application is logged.
 
-    References the company, role, and something from the user's background.
-    2-3 sentences. Warm but not generic. Not toxic positivity.
+    Validates the effort and the fit. Does not suggest next steps or other roles.
+    2-3 sentences. Warm but not generic. No emojis.
     """
     prompt = (
         f"The user just applied for a {role_title} role at {company}. "
         f"Their background: {user_background}. "
-        "Write a short (2-3 sentence) warm, specific message acknowledging this application. "
-        "Reference the company and role. Mention one concrete reason from their background "
-        "why they're a strong fit. Be genuine, not generic. No emojis."
+        "Write a short (2-3 sentence) warm message that validates this application. "
+        "Reference the company and role, and mention one concrete reason from their background "
+        "why this is a good match. "
+        "Do not suggest other roles, next steps, or what they should do next — "
+        "sending an application is hard work and deserves acknowledgement on its own. "
+        "Be genuine. No emojis."
     )
     message = _client().messages.create(
         model=MODEL,
