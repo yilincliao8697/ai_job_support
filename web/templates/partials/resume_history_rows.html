@@ -3,7 +3,13 @@
   <td>{{ record.company }}</td>
   <td>{{ record.role }}</td>
   <td>{{ record.generated_at[:10] }}</td>
-  <td>{% if record.application_id %}Linked{% else %}—{% endif %}</td>
+  <td>
+    {% if record.application_id %}
+    Linked
+    {% else %}
+    <a href="/applications/new?resume_id={{ record.id }}" style="font-size: 0.85rem;">Log application</a>
+    {% endif %}
+  </td>
   <td>
     <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: nowrap;">
       <button class="btn btn-secondary"
