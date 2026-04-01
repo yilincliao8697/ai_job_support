@@ -1,4 +1,4 @@
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
   {% for post in posts %}
   {% set slot_index = loop.index0 %}
   {% include "partials/linkedin_post_slot.html" %}

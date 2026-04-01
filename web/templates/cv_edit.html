@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Edit CV{% endblock %}
+
+{% block content %}
+<h1>Edit Master CV</h1>
+<p class="text-muted" style="margin-top: 0.25rem; margin-bottom: 2rem;">
+  Raw YAML. Changes affect resume generation and LinkedIn posts immediately.
+</p>
+
+{% if error %}
+<div style="background: #fff0f0; border: 1px solid #f5c6cb; border-radius: 6px;
+            padding: 0.75rem 1rem; margin-bottom: 1.5rem; color: #c0392b; font-size: 0.9rem;">
+  <strong>YAML error — file not saved.</strong><br>{{ error }}
+</div>
+{% endif %}
+
+{% if saved %}
+<div style="background: #f0fff4; border: 1px solid #b2dfdb; border-radius: 6px;
+            padding: 0.75rem 1rem; margin-bottom: 1.5rem; color: #27ae60; font-size: 0.9rem;">
+  Saved.
+</div>
+{% endif %}
+
+<form method="post" action="/cv/save">
+  <textarea name="content"
+            style="width: 100%; min-height: 600px; font-family: 'Courier New', Courier, monospace;
+                   font-size: 0.85rem; line-height: 1.6; resize: vertical;
+                   border: 1px solid #ddd; border-radius: 6px; padding: 1rem;
+                   background: #fafafa; color: #222;">{{ content }}</textarea>
+  <div style="margin-top: 1rem;">
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+</form>
+{% endblock %}

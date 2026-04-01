@@ -3,6 +3,7 @@ import itertools
 import json
 import os
 import re as _re
+import yaml
 from datetime import date
 
 from fastapi import FastAPI, Request, Form, HTTPException
@@ -746,6 +747,38 @@ async def resume_edit_save(request: Request, resume_id: int):
     tailored_json_str = json.dumps(dataclasses.asdict(tailored))
     update_resume_after_edit(DB_PATH, resume_id, tailored_json_str, filename)
     return RedirectResponse(f"/resume/{resume_id}/edit", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# CV Editor
+# ---------------------------------------------------------------------------
+
+@app.get("/cv/edit")
+async def cv_edit_page(request: Request, saved: int = 0):
+    """Render the master CV editor with current YAML content."""
+    with open(CV_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+    return templates.TemplateResponse(
+        request,
+        "cv_edit.html",
+        {"content": content, "saved": saved == 1, "error": None},
+    )
+
+
+@app.post("/cv/save")
+async def cv_save(request: Request, content: str = Form(...)):
+    """Validate and write master CV YAML. Re-renders with error on invalid YAML."""
+    try:
+        yaml.safe_load(content)
+    except yaml.YAMLError as e:
+        return templates.TemplateResponse(
+            request,
+            "cv_edit.html",
+            {"content": content, "saved": False, "error": str(e)},
+        )
+    with open(CV_PATH, "w", encoding="utf-8") as f:
+        f.write(content)
+    return RedirectResponse("/cv/edit?saved=1", status_code=303)
 
 
 # ---------------------------------------------------------------------------
