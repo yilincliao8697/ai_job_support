@@ -11,6 +11,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 
+from agents.linkedin_post import (
+    CATEGORIES,
+    TONES,
+    get_linkedin_context,
+    fetch_url_content,
+    generate_linkedin_posts,
+    regenerate_linkedin_post,
+)
 from agents.market_intelligence import expand_companies, get_company_pulse
 from core.watchlist import (
     add_company, list_companies, list_companies_by_sector,
@@ -738,6 +746,59 @@ async def resume_edit_save(request: Request, resume_id: int):
     tailored_json_str = json.dumps(dataclasses.asdict(tailored))
     update_resume_after_edit(DB_PATH, resume_id, tailored_json_str, filename)
     return RedirectResponse(f"/resume/{resume_id}/edit", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# LinkedIn Post Generator
+# ---------------------------------------------------------------------------
+
+@app.get("/linkedin")
+async def linkedin_page(request: Request):
+    """Render the LinkedIn post generator page."""
+    return templates.TemplateResponse(
+        request,
+        "linkedin.html",
+        {"categories": CATEGORIES, "tones": TONES},
+    )
+
+
+@app.post("/linkedin/generate")
+async def linkedin_generate(
+    request: Request,
+    category: str = Form("tech_tool"),
+    topic: str = Form(""),
+    url: str = Form(""),
+    tone: str = Form("insightful"),
+):
+    """Generate 3 LinkedIn post options. Returns the posts partial for HTMX swap."""
+    cv_context = get_linkedin_context(CV_PATH)
+    url_content = fetch_url_content(url) if url.strip() else ""
+    posts = generate_linkedin_posts(cv_context, category, topic, tone, url_content)
+    return templates.TemplateResponse(
+        request,
+        "partials/linkedin_posts.html",
+        {"posts": posts, "category": category, "topic": topic, "url": url, "tone": tone},
+    )
+
+
+@app.post("/linkedin/regenerate")
+async def linkedin_regenerate(
+    request: Request,
+    category: str = Form("tech_tool"),
+    topic: str = Form(""),
+    url: str = Form(""),
+    tone: str = Form("insightful"),
+    slot: int = Form(0),
+):
+    """Regenerate a single post slot. Returns one post slot partial for HTMX swap."""
+    cv_context = get_linkedin_context(CV_PATH)
+    url_content = fetch_url_content(url) if url.strip() else ""
+    post = regenerate_linkedin_post(cv_context, category, topic, tone, url_content)
+    return templates.TemplateResponse(
+        request,
+        "partials/linkedin_post_slot.html",
+        {"post": post, "slot_index": slot, "category": category, "topic": topic, "url": url, "tone": tone},
+    )
 
 
 # ---------------------------------------------------------------------------

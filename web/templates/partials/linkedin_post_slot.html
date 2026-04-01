@@ -1,0 +1,37 @@
+<div id="post-slot-{{ slot_index }}"
+     style="border: 1px solid #ddd; border-radius: 8px; padding: 1.25rem;
+            display: flex; flex-direction: column; gap: 0.75rem;">
+
+  <textarea id="post-text-{{ slot_index }}"
+            style="width: 100%; min-height: 280px; resize: vertical; border: none;
+                   background: transparent; font-size: 0.9rem; line-height: 1.7;
+                   font-family: inherit; color: #333; padding: 0;"
+            readonly>{{ post }}</textarea>
+
+  <div style="display: flex; gap: 0.75rem; align-items: center;">
+    <button type="button"
+            onclick="copyPost({{ slot_index }})"
+            class="btn btn-primary"
+            style="font-size: 0.85rem; padding: 0.4rem 0.9rem;">
+      Copy
+    </button>
+    <span id="copied-{{ slot_index }}"
+          style="font-size: 0.8rem; color: #888; display: none;">Copied!</span>
+
+    <form hx-post="/linkedin/regenerate"
+          hx-target="#post-slot-{{ slot_index }}"
+          hx-swap="outerHTML"
+          style="margin-left: auto;">
+      <input type="hidden" name="category" value="{{ category }}">
+      <input type="hidden" name="topic" value="{{ topic }}">
+      <input type="hidden" name="url" value="{{ url }}">
+      <input type="hidden" name="tone" value="{{ tone }}">
+      <input type="hidden" name="slot" value="{{ slot_index }}">
+      <button type="submit"
+              class="btn btn-secondary"
+              style="font-size: 0.85rem; padding: 0.4rem 0.9rem;">
+        Show me another
+      </button>
+    </form>
+  </div>
+</div>
