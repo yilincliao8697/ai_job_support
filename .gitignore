@@ -9,6 +9,7 @@ data/jobs.db
 
 # Generated resumes
 data/resumes/
+data/resumesh/
 
 # Python
 __pycache__/
