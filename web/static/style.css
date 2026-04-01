@@ -117,6 +117,12 @@ a:hover { color: #2a52a8; }
   }
 }
 
+@media (min-width: 900px) {
+  .card-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
 .card h2 { margin-top: 0; }
 .card p { color: #555; margin: 0.25rem 0 1rem; font-size: 0.9rem; }
 .card .card-link {

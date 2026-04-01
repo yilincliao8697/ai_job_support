@@ -22,14 +22,34 @@
 </div>
 {% endif %}
 
-<form method="post" action="/cv/save">
-  <textarea name="content"
-            style="width: 100%; min-height: 600px; font-family: 'Courier New', Courier, monospace;
-                   font-size: 0.85rem; line-height: 1.6; resize: vertical;
-                   border: 1px solid #ddd; border-radius: 6px; padding: 1rem;
-                   background: #fafafa; color: #222;">{{ content }}</textarea>
+<form method="post" action="/cv/save" id="cv-form">
+  <textarea id="cv-content" name="content" style="display: none;">{{ content }}</textarea>
+  <div id="editor" style="border: 1px solid #ddd; border-radius: 6px;"></div>
   <div style="margin-top: 1rem;">
     <button type="submit" class="btn btn-primary">Save</button>
   </div>
 </form>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/idea.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/yaml/yaml.min.js"></script>
+<script>
+  const editor = CodeMirror(document.getElementById('editor'), {
+    value: document.getElementById('cv-content').value,
+    mode: 'yaml',
+    theme: 'idea',
+    lineNumbers: true,
+    indentWithTabs: false,
+    tabSize: 2,
+    lineWrapping: true,
+    extraKeys: { Tab: cm => cm.execCommand('insertSoftTab') },
+  });
+
+  editor.setSize('100%', '600px');
+
+  document.getElementById('cv-form').addEventListener('submit', () => {
+    document.getElementById('cv-content').value = editor.getValue();
+  });
+</script>
 {% endblock %}
