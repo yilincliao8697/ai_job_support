@@ -4,6 +4,7 @@ jinja2
 python-dotenv
 anthropic
 pyyaml
+pypdf
 weasyprint
 pytest
 httpx

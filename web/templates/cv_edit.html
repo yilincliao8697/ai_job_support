@@ -52,4 +52,46 @@
     document.getElementById('cv-content').value = editor.getValue();
   });
 </script>
+
+<details style="margin-top: 1.5rem; border: 1px solid #ddd; border-radius: 6px; padding: 0;">
+  <summary style="padding: 0.75rem 1rem; font-weight: 600; cursor: pointer; list-style: none;
+                  display: flex; align-items: center; gap: 0.5rem;">
+    Upload from PDF
+    <span style="font-weight: 400; color: #888; font-size: 0.85rem;">
+    upload an existing CV to generate a new master YAML
+    </span>
+  </summary>
+
+  <div style="padding: 0 1rem 1rem;">
+    <form method="post" action="/cv/upload-pdf" enctype="multipart/form-data">
+      <div style="margin-top: 0.75rem;">
+        <input type="file" id="pdf-input" name="pdf" accept=".pdf"
+               style="display: block; margin-bottom: 0.75rem;">
+
+        {% if cv_exists %}
+        <div id="overwrite-warning"
+             style="display: none; background: #fff8e1; border: 1px solid #ffe082;
+                    border-radius: 6px; padding: 0.6rem 0.9rem; margin-bottom: 0.75rem;
+                    font-size: 0.85rem; color: #7a6000;">
+          This will overwrite your existing CV. Are you sure?
+        </div>
+        {% endif %}
+
+        <button id="upload-btn" type="submit" class="btn btn-secondary" disabled>
+          Convert to YAML
+        </button>
+      </div>
+    </form>
+  </div>
+</details>
+
+<script>
+  document.getElementById('pdf-input').addEventListener('change', function() {
+    const hasFile = this.files && this.files.length > 0;
+    document.getElementById('upload-btn').disabled = !hasFile;
+    {% if cv_exists %}
+    document.getElementById('overwrite-warning').style.display = hasFile ? 'block' : 'none';
+    {% endif %}
+  });
+</script>
 {% endblock %}

@@ -1,4 +1,5 @@
 import dataclasses
+import io
 import itertools
 import json
 import os
@@ -6,12 +7,13 @@ import re as _re
 import yaml
 from datetime import date
 
-from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException, UploadFile, File
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 
+from agents.cv_from_pdf import extract_pdf_text, cv_yaml_from_pdf
 from agents.linkedin_post import (
     CATEGORIES,
     TONES,
@@ -758,11 +760,64 @@ async def cv_edit_page(request: Request, saved: int = 0):
     """Render the master CV editor with current YAML content."""
     with open(CV_PATH, "r", encoding="utf-8") as f:
         content = f.read()
+    cv_exists = bool(content.strip())
     return templates.TemplateResponse(
         request,
         "cv_edit.html",
-        {"content": content, "saved": saved == 1, "error": None},
+        {"content": content, "saved": saved == 1, "error": None, "cv_exists": cv_exists},
     )
+
+
+@app.post("/cv/upload-pdf")
+async def cv_upload_pdf(request: Request, pdf: UploadFile = File(default=None)):
+    """Convert an uploaded CV PDF to YAML and write to master_cv.yaml."""
+    if pdf is None or not pdf.filename:
+        return RedirectResponse("/cv/edit", status_code=303)
+
+    file_bytes = await pdf.read()
+    if not file_bytes:
+        return RedirectResponse("/cv/edit", status_code=303)
+
+    pdf_text = extract_pdf_text(file_bytes)
+    if not pdf_text:
+        with open(CV_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+        return templates.TemplateResponse(
+            request,
+            "cv_edit.html",
+            {
+                "content": content,
+                "saved": False,
+                "error": "Could not extract text from PDF. Is it a text-based PDF (not scanned)?",
+                "cv_exists": bool(content.strip()),
+            },
+        )
+
+    with open("data/master_cv.example.yaml", "r", encoding="utf-8") as f:
+        example_schema = f.read()
+
+    yaml_str = cv_yaml_from_pdf(pdf_text, example_schema)
+
+    try:
+        yaml.safe_load(yaml_str)
+    except yaml.YAMLError as e:
+        with open(CV_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+        return templates.TemplateResponse(
+            request,
+            "cv_edit.html",
+            {
+                "content": content,
+                "saved": False,
+                "error": f"AI returned invalid YAML: {e}",
+                "cv_exists": bool(content.strip()),
+            },
+        )
+
+    with open(CV_PATH, "w", encoding="utf-8") as f:
+        f.write(yaml_str)
+
+    return RedirectResponse("/cv/edit?saved=1", status_code=303)
 
 
 @app.post("/cv/save")
@@ -774,7 +829,7 @@ async def cv_save(request: Request, content: str = Form(...)):
         return templates.TemplateResponse(
             request,
             "cv_edit.html",
-            {"content": content, "saved": False, "error": str(e)},
+            {"content": content, "saved": False, "error": str(e), "cv_exists": bool(content.strip())},
         )
     with open(CV_PATH, "w", encoding="utf-8") as f:
         f.write(content)

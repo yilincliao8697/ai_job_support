@@ -1,10 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}AI Job Support{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
+  <script>
+    // Apply saved theme before paint to avoid flash
+    (function() {
+      const t = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
 </head>
 <body>
@@ -17,6 +24,7 @@
           <a href="/companies">Companies</a>
         </span>
       </span>
+      <a href="/cv/edit">CV</a>
       <span class="nav-dropdown">
         <a href="/resume">Resume</a>
         <span class="nav-dropdown-menu">
@@ -25,7 +33,6 @@
       </span>
       <a href="/applications">Applications</a>
       <a href="/linkedin">LinkedIn</a>
-      <a href="/cv/edit">CV</a>
       <a href="/encouragement">Boost</a>
     </nav>
   </header>
