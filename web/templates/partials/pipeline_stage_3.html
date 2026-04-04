@@ -1,0 +1,33 @@
+{% if pipeline.resume_id %}
+<div class="card">
+  <h2 style="margin-top: 0;">Resume</h2>
+
+  <div style="padding: 1rem; background: var(--bg-banner); border: 1px solid var(--border-banner);
+              border-radius: 8px; margin-bottom: 1.5rem;">
+    <p style="margin: 0 0 0.5rem;"><strong>Resume selected.</strong></p>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">
+      <a href="/resume/download/{{ pipeline.resume_filename }}" target="_blank">Download PDF ↗</a>
+      &nbsp;·&nbsp;
+      <a href="/resume/{{ pipeline.resume_id }}/edit" target="_blank">Edit resume ↗</a>
+      &nbsp;·&nbsp;
+      <a href="#" onclick="document.getElementById('change-resume').style.display='block'; this.style.display='none'; return false;"
+         style="color: var(--text-muted);">Change</a>
+    </p>
+  </div>
+
+  <div id="change-resume" style="display: none; margin-bottom: 1.5rem;">
+    {% include "partials/pipeline_resume_picker.html" %}
+  </div>
+
+  <form method="post" action="/apply/{{ pipeline.id }}/advance-from-resume">
+    <button type="submit" class="btn btn-primary">Continue to cover letter →</button>
+  </form>
+</div>
+
+{% else %}
+<div class="card">
+  <h2 style="margin-top: 0;">Resume</h2>
+
+  {% include "partials/pipeline_resume_picker.html" %}
+</div>
+{% endif %}

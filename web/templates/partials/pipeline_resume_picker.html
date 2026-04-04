@@ -1,0 +1,53 @@
+{% if existing_resumes %}
+<p class="text-muted" style="margin-bottom: 1.25rem;">
+  Pick an existing resume or generate a new tailored one.
+</p>
+
+<div style="margin-bottom: 1.5rem; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+  {% for r in existing_resumes %}
+  <form method="post" action="/apply/{{ pipeline.id }}/select-resume"
+        style="display: flex; align-items: center; justify-content: space-between;
+               padding: 0.65rem 1rem; border-top: {% if loop.first %}none{% else %}1px solid var(--border){% endif %};
+               background: var(--bg-card);">
+    <div>
+      <input type="hidden" name="resume_id" value="{{ r.id }}">
+      <span style="font-size: 0.9rem;">{{ r.role }} — {{ r.company }}</span>
+      <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">
+        {{ r.generated_at[:10] }}{% if r.starred %} ★{% endif %}
+      </span>
+    </div>
+    <button type="submit" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.3rem 0.75rem;">
+      Use this
+    </button>
+  </form>
+  {% endfor %}
+</div>
+
+<details style="border: 1px solid var(--border); border-radius: 6px; padding: 0;">
+  <summary style="padding: 0.65rem 1rem; cursor: pointer; font-size: 0.9rem; color: var(--text-muted);">
+    Generate a new tailored resume instead
+  </summary>
+  <div style="padding: 0 1rem 1rem; border-top: 1px solid var(--border);">
+    <p class="text-muted" style="margin: 0.75rem 0;">
+      Claude will tailor your master CV to this specific role using the job description from step 1.
+    </p>
+    <form method="post" action="/apply/{{ pipeline.id }}/generate-resume">
+      <button type="submit" class="btn btn-primary">Generate resume</button>
+      <span style="margin-left: 0.75rem; color: var(--text-muted); font-size: 0.85rem;">
+        Takes about 30 seconds
+      </span>
+    </form>
+  </div>
+</details>
+
+{% else %}
+<p class="text-muted" style="margin-bottom: 1.5rem;">
+  No existing resumes. Claude will tailor your master CV to this role using the job description from step 1.
+</p>
+<form method="post" action="/apply/{{ pipeline.id }}/generate-resume">
+  <button type="submit" class="btn btn-primary">Generate resume</button>
+  <span style="margin-left: 0.75rem; color: var(--text-muted); font-size: 0.85rem;">
+    Takes about 30 seconds
+  </span>
+</form>
+{% endif %}

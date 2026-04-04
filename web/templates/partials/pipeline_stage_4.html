@@ -1,0 +1,41 @@
+{% if pipeline.cover_letter_id %}
+<div class="card">
+  <h2 style="margin-top: 0;">Create a cover letter</h2>
+
+  <div style="margin-bottom: 1.5rem;">
+    <textarea rows="12" style="width: 100%; font-family: Georgia, serif; font-size: 0.9rem;
+                               line-height: 1.7; border: 1px solid var(--border);
+                               border-radius: 6px; padding: 0.75rem; resize: vertical;">{{ pipeline.cover_letter_content }}</textarea>
+    <button class="btn btn-secondary"
+            style="margin-top: 0.5rem; font-size: 0.85rem;"
+            onclick="const t=this.previousElementSibling; navigator.clipboard.writeText(t.value).then(()=>{const o=this.textContent; this.textContent='Copied!'; setTimeout(()=>this.textContent=o,2000)})">
+      Copy to clipboard
+    </button>
+  </div>
+
+  <form method="post" action="/apply/{{ pipeline.id }}/advance-from-cover-letter">
+    <button type="submit" class="btn btn-primary">Continue →</button>
+  </form>
+</div>
+
+{% else %}
+<div class="card">
+  <h2 style="margin-top: 0;">Create a cover letter</h2>
+  <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: -0.5rem; margin-bottom: 1.5rem;">
+    Optional — skip if the role doesn't require one
+  </p>
+  <p class="text-muted" style="margin-bottom: 1.5rem;">
+    Claude will write a tailored 3-paragraph cover letter using your CV and the job description.
+  </p>
+
+  <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+    <form method="post" action="/apply/{{ pipeline.id }}/generate-cover-letter">
+      <button type="submit" class="btn btn-primary">Generate cover letter</button>
+    </form>
+
+    <form method="post" action="/apply/{{ pipeline.id }}/skip-cover-letter">
+      <button type="submit" class="btn btn-secondary">Skip this step →</button>
+    </form>
+  </div>
+</div>
+{% endif %}

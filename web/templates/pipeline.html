@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Apply — AI Job Support{% endblock %}
+
+{% block content %}
+
+{% set s = pipeline.stage %}
+{% set ms = pipeline.max_stage %}
+
+<div class="pipeline-stepper">
+  {% for num, label in stage_labels.items() %}
+  {% set is_skipped = num == 4 and pipeline.skipped_cover_letter and ms >= 5 %}
+  {% set is_visited = num <= ms and num != s %}
+  {% set is_current = num == s %}
+  <div class="pipeline-step {% if is_skipped %}skipped{% elif is_visited %}completed{% elif is_current %}current{% endif %}">
+    {% if is_visited or is_skipped %}
+    <form method="post" action="/apply/{{ pipeline.id }}/goto/{{ num }}" style="margin: 0;">
+      <button type="submit" class="pipeline-step-circle pipeline-step-circle-btn" title="Go to {{ label }}">✓</button>
+    </form>
+    {% else %}
+    <div class="pipeline-step-circle">{{ num }}</div>
+    {% endif %}
+    <div class="pipeline-step-label">{{ label }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+  {% if s > 1 %}
+  <form method="post" action="/apply/{{ pipeline.id }}/goto/{{ s - 1 }}" style="margin: 0;">
+    <button type="submit" class="btn btn-secondary" style="font-size: 0.85rem;">← Back</button>
+  </form>
+  {% endif %}
+  <form method="post" action="/apply/{{ pipeline.id }}/delete"
+        onsubmit="return confirm('Abandon this application?')" style="margin: 0; margin-left: auto;">
+    <button type="submit" style="background: none; border: none; font-size: 0.8rem;
+            color: var(--text-muted); cursor: pointer; padding: 0;">Abandon</button>
+  </form>
+</div>
+
+<div id="stage-content">
+  {% include stage_partial %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,37 @@
+<div class="card">
+  <h2 style="margin-top: 0;">Find a role</h2>
+  <p class="text-muted">Paste the job description below. Enter the role title and company if you know them — these pre-fill your resume and application record later.</p>
+
+  <form method="post" action="/apply/{{ pipeline.id }}/advance">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+      <div>
+        <label for="job_title" style="font-weight: 600;">Job title</label>
+        <input type="text" id="job_title" name="job_title"
+               value="{{ pipeline.job_title }}"
+               placeholder="e.g. Senior ML Engineer"
+               style="width: 100%; margin-top: 0.4rem;">
+      </div>
+      <div>
+        <label for="company" style="font-weight: 600;">Company</label>
+        <input type="text" id="company" name="company"
+               value="{{ pipeline.company }}"
+               placeholder="e.g. Acme Corp"
+               style="width: 100%; margin-top: 0.4rem;">
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1.5rem;">
+      <label for="jd_text" style="font-weight: 600;">Job description</label>
+      <textarea id="jd_text" name="jd_text" rows="12"
+                placeholder="Paste the full job description here..."
+                style="width: 100%; margin-top: 0.4rem;" required>{{ pipeline.jd_text }}</textarea>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <button type="submit" class="btn btn-primary">Save and continue →</button>
+      <a href="/intelligence" target="_blank" style="font-size: 0.9rem; color: var(--text-muted);">
+        Research this company ↗
+      </a>
+    </div>
+  </form>
+</div>

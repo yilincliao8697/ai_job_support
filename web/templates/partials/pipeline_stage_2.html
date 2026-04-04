@@ -1,0 +1,22 @@
+<div class="card">
+  <h2 style="margin-top: 0;">Check your CV</h2>
+  <p>Before tailoring your resume, make sure your master CV is up to date. Open it in a new tab, review it, then come back and continue.</p>
+
+  <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-banner);
+              border: 1px solid var(--border-banner); border-radius: 8px;">
+    <p style="margin: 0 0 0.75rem;"><strong>Things to check:</strong></p>
+    <ul style="margin: 0; padding-left: 1.25rem; line-height: 2;">
+      <li>Your most recent role is included and up to date</li>
+      <li>Skills reflect what you're currently working with</li>
+      <li>Key achievements are specific and quantified where possible</li>
+    </ul>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+    <a href="/cv/edit" target="_blank" class="btn btn-secondary">Open CV editor ↗</a>
+
+    <form method="post" action="/apply/{{ pipeline.id }}/advance">
+      <button type="submit" class="btn btn-primary">My CV is up to date →</button>
+    </form>
+  </div>
+</div>

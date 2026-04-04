@@ -27,8 +27,11 @@
     <a href="/" class="logo">AI Job Support</a>
     <nav>
       <span class="nav-dropdown">
-        <a href="/applications">Apply</a>
+        <button class="nav-dropdown-toggle" onclick="toggleDropdown(this, event)" type="button">
+          Apply <span class="nav-dropdown-arrow">▾</span>
+        </button>
         <span class="nav-dropdown-menu">
+          <a href="/apply/start">Start application</a>
           <a href="/applications">Applications</a>
           <a href="/resume">Resume</a>
           <a href="/cover-letter">Cover Letter</a>
@@ -36,7 +39,9 @@
         </span>
       </span>
       <span class="nav-dropdown">
-        <a href="/intelligence">Research</a>
+        <button class="nav-dropdown-toggle" onclick="toggleDropdown(this, event)" type="button">
+          Research <span class="nav-dropdown-arrow">▾</span>
+        </button>
         <span class="nav-dropdown-menu">
           <a href="/intelligence">Intelligence</a>
           <a href="/companies">Companies</a>
@@ -51,6 +56,32 @@
     // Sync button label to current theme after DOM is ready
     document.getElementById('theme-toggle').textContent =
       document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☽';
+
+    function toggleDropdown(btn, event) {
+      event.stopPropagation();
+      const dropdown = btn.closest('.nav-dropdown');
+      const isOpen = dropdown.classList.contains('open');
+      // Close all open dropdowns first
+      document.querySelectorAll('.nav-dropdown.open').forEach(function(d) {
+        d.classList.remove('open');
+        d.querySelector('.nav-dropdown-arrow').textContent = '▾';
+      });
+      // Toggle the clicked one
+      if (!isOpen) {
+        dropdown.classList.add('open');
+        btn.querySelector('.nav-dropdown-arrow').textContent = '▴';
+      }
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.nav-dropdown')) {
+        document.querySelectorAll('.nav-dropdown.open').forEach(function(d) {
+          d.classList.remove('open');
+          d.querySelector('.nav-dropdown-arrow').textContent = '▾';
+        });
+      }
+    });
   </script>
 
   <main>

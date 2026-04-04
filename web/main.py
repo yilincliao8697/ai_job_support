@@ -52,6 +52,11 @@ from core.cover_letter_store import (
     init_cover_letters_table, save_cover_letter, list_cover_letters,
     get_cover_letter, delete_cover_letter,
 )
+from core.pipeline_store import (
+    init_pipelines_table, migrate_pipelines, create_pipeline, get_pipeline,
+    update_pipeline, advance_pipeline_stage, list_active_pipelines,
+    complete_pipeline, delete_pipeline as delete_pipeline_record,
+)
 
 load_dotenv()
 
@@ -86,6 +91,8 @@ migrate_watchlist(DB_PATH)
 init_resumes_table(DB_PATH)
 migrate_resumes(DB_PATH)
 init_cover_letters_table(DB_PATH)
+init_pipelines_table(DB_PATH)
+migrate_pipelines(DB_PATH)
 
 templates.env.filters["format_date"] = _format_date
 
@@ -123,18 +130,30 @@ async def dashboard(request: Request):
 
 @app.get("/applications")
 async def applications_list(request: Request, show_all: int = 0):
-    """List applications — active only by default."""
+    """List applications — active only by default. Also shows in-progress pipelines."""
     active_only = show_all != 1
     flash = unquote(request.cookies.get("flash_encouragement", ""))
     applications = list_applications(DB_PATH, active_only=active_only)
+    pipelines = list_active_pipelines(DB_PATH)
     response = templates.TemplateResponse(
         request,
         "applications/list.html",
-        {"applications": applications, "show_all": not active_only, "flash_encouragement": flash},
+        {
+            "applications": applications,
+            "show_all": not active_only,
+            "flash_encouragement": flash,
+            "pipelines": pipelines,
+        },
     )
     if flash:
         response.delete_cookie("flash_encouragement")
     return response
+
+
+@app.get("/apply")
+async def pipeline_list(request: Request):
+    """Redirect to applications page — pipelines are now shown there."""
+    return RedirectResponse("/applications", status_code=303)
 
 
 @app.get("/applications/new")
@@ -979,6 +998,270 @@ async def cover_letter_delete(request: Request, cover_letter_id: int):
     """Delete a cover letter record. HTMX — removes the row from the table."""
     delete_cover_letter(DB_PATH, cover_letter_id)
     return ""
+
+
+# ---------------------------------------------------------------------------
+# Application Pipeline
+# ---------------------------------------------------------------------------
+
+PIPELINE_STAGE_LABELS = {
+    1: "Find role",
+    2: "Check CV",
+    3: "Resume",
+    4: "Cover letter",
+    5: "Record",
+}
+
+
+def _pipeline_stage_partial(stage: int) -> str:
+    """Return the template path for a given pipeline stage."""
+    return f"partials/pipeline_stage_{stage}.html"
+
+
+def _get_or_create_pipeline() -> int:
+    """Return the active pipeline id, or create one if none exists."""
+    active = list_active_pipelines(DB_PATH)
+    if active:
+        return active[0]["id"]
+    return create_pipeline(DB_PATH)
+
+
+@app.post("/apply/start")
+async def pipeline_start(request: Request):
+    """Go to the active pipeline, or create one if none exists (POST — dashboard button)."""
+    pipeline_id = _get_or_create_pipeline()
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.get("/apply/start")
+async def pipeline_start_get(request: Request):
+    """Go to the active pipeline, or create one if none exists (GET — nav link)."""
+    pipeline_id = _get_or_create_pipeline()
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.get("/apply")
+async def pipeline_list(request: Request):
+    """List in-progress (incomplete) pipelines."""
+    pipelines = list_active_pipelines(DB_PATH)
+    return templates.TemplateResponse(
+        request,
+        "pipeline_list.html",
+        {"pipelines": pipelines},
+    )
+
+
+@app.get("/apply/{pipeline_id}")
+async def pipeline_page(request: Request, pipeline_id: int):
+    """Render the pipeline page for the current stage."""
+    pipeline = get_pipeline(DB_PATH, pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+
+    # Redirect completed pipelines to the recorded application
+    if pipeline.get("completed_at") and pipeline.get("application_id"):
+        return RedirectResponse(f"/applications/{pipeline['application_id']}/edit", status_code=303)
+
+    stage = pipeline["stage"]
+
+    # Enrich with resume filename and cover letter content for stage templates
+    pipeline = dict(pipeline)
+    if pipeline.get("resume_id"):
+        resume = get_resume(DB_PATH, pipeline["resume_id"])
+        pipeline["resume_filename"] = resume.filename if resume else ""
+    else:
+        pipeline["resume_filename"] = ""
+
+    if pipeline.get("cover_letter_id"):
+        cl = get_cover_letter(DB_PATH, pipeline["cover_letter_id"])
+        pipeline["cover_letter_content"] = cl.content if cl else ""
+    else:
+        pipeline["cover_letter_content"] = ""
+
+    return templates.TemplateResponse(
+        request,
+        "pipeline.html",
+        {
+            "pipeline": pipeline,
+            "stage_labels": PIPELINE_STAGE_LABELS,
+            "stage_partial": _pipeline_stage_partial(stage),
+            "today": date.today().isoformat(),
+            "existing_resumes": list_resumes(DB_PATH),
+        },
+    )
+
+
+@app.post("/apply/{pipeline_id}/advance")
+async def pipeline_advance(
+    request: Request,
+    pipeline_id: int,
+    job_title: str = Form(""),
+    company: str = Form(""),
+    jd_text: str = Form(""),
+):
+    """
+    Advance the pipeline to the next stage.
+    Stage 1 posts job_title, company, jd_text.
+    Stage 2 posts nothing (CV check confirmation only).
+    """
+    pipeline = get_pipeline(DB_PATH, pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+
+    stage = pipeline["stage"]
+    if stage == 1:
+        advance_pipeline_stage(DB_PATH, pipeline_id, 2,
+                               job_title=job_title, company=company, jd_text=jd_text)
+    elif stage == 2:
+        advance_pipeline_stage(DB_PATH, pipeline_id, 3)
+
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.post("/apply/{pipeline_id}/goto/{stage}")
+async def pipeline_goto(pipeline_id: int, stage: int):
+    """Jump to any previously visited stage."""
+    pipeline = get_pipeline(DB_PATH, pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+    if 1 <= stage <= (pipeline.get("max_stage") or 1):
+        update_pipeline(DB_PATH, pipeline_id, stage=stage)
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.post("/apply/{pipeline_id}/select-resume")
+async def pipeline_select_resume(pipeline_id: int, resume_id: int = Form(...)):
+    """Link an existing resume to the pipeline and stay on stage 3."""
+    pipeline = get_pipeline(DB_PATH, pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+    update_pipeline(DB_PATH, pipeline_id, resume_id=resume_id)
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.post("/apply/{pipeline_id}/generate-resume")
+async def pipeline_generate_resume(request: Request, pipeline_id: int):
+    """Generate a tailored resume inline, link it to the pipeline, stay on stage 3."""
+    pipeline = get_pipeline(DB_PATH, pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+
+    cv_text = get_cv_as_text(CV_PATH)
+    tailored = tailor_cv(cv_text, pipeline["jd_text"])
+    filename = render_resume_pdf(tailored, RESUMES_DIR)
+    tailored_json_str = json.dumps(dataclasses.asdict(tailored))
+    resume_id = record_resume(
+        DB_PATH, filename, tailored.target_company, tailored.target_role,
+        job_description=pipeline["jd_text"],
+        tailored_json=tailored_json_str,
+    )
+    update_pipeline(DB_PATH, pipeline_id, resume_id=resume_id)
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.post("/apply/{pipeline_id}/advance-from-resume")
+async def pipeline_advance_from_resume(pipeline_id: int):
+    """Advance from stage 3 to stage 4 (resume must already be generated)."""
+    pipeline = get_pipeline(DB_PATH, pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+    if pipeline["resume_id"]:
+        advance_pipeline_stage(DB_PATH, pipeline_id, 4)
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.post("/apply/{pipeline_id}/generate-cover-letter")
+async def pipeline_generate_cover_letter(request: Request, pipeline_id: int):
+    """Generate a cover letter inline, link it to the pipeline, stay on stage 4."""
+    pipeline = get_pipeline(DB_PATH, pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+
+    cv_text = get_cv_as_text(CV_PATH)
+    content = generate_cover_letter(
+        job_description=pipeline["jd_text"],
+        cv_text=cv_text,
+        tone="professional",
+    )
+    cover_letter_id = save_cover_letter(
+        DB_PATH,
+        content=content,
+        tone="professional",
+        job_title=pipeline["job_title"],
+        company=pipeline["company"],
+    )
+    update_pipeline(DB_PATH, pipeline_id, cover_letter_id=cover_letter_id)
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.post("/apply/{pipeline_id}/skip-cover-letter")
+async def pipeline_skip_cover_letter(pipeline_id: int):
+    """Skip cover letter stage, advance to stage 5."""
+    advance_pipeline_stage(DB_PATH, pipeline_id, 5, skipped_cover_letter=1)
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.post("/apply/{pipeline_id}/advance-from-cover-letter")
+async def pipeline_advance_from_cover_letter(pipeline_id: int):
+    """Advance from stage 4 to stage 5 (cover letter must already be generated)."""
+    pipeline = get_pipeline(DB_PATH, pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+    if pipeline["cover_letter_id"]:
+        advance_pipeline_stage(DB_PATH, pipeline_id, 5)
+    return RedirectResponse(f"/apply/{pipeline_id}", status_code=303)
+
+
+@app.post("/apply/{pipeline_id}/complete")
+async def pipeline_complete(
+    request: Request,
+    pipeline_id: int,
+    company: str = Form(...),
+    role_title: str = Form(...),
+    job_url: str = Form(""),
+    date_applied: str = Form(...),
+    notes: str = Form(""),
+    referral_contacts: str = Form(""),
+):
+    """Record the application, mark pipeline complete, redirect to applications list."""
+    pipeline = get_pipeline(DB_PATH, pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+
+    resume_filename = ""
+    if pipeline["resume_id"]:
+        resume = get_resume(DB_PATH, pipeline["resume_id"])
+        if resume:
+            resume_filename = resume.filename
+
+    new_app = ApplicationIn(
+        company=company,
+        role_title=role_title,
+        job_url=job_url,
+        date_applied=date_applied,
+        status="applied",
+        notes=notes,
+        resume_filename=resume_filename,
+        referral_contacts=referral_contacts,
+    )
+    application_id = add_application(DB_PATH, new_app)
+
+    if pipeline["resume_id"]:
+        link_application(DB_PATH, pipeline["resume_id"], application_id)
+
+    complete_pipeline(DB_PATH, pipeline_id, application_id=application_id)
+
+    encouragement = get_encouragement_on_log(company, role_title, USER_BACKGROUND)
+    response = RedirectResponse("/applications", status_code=303)
+    response.set_cookie("flash_encouragement", quote(encouragement), max_age=60, httponly=True)
+    return response
+
+
+@app.post("/apply/{pipeline_id}/delete")
+async def pipeline_delete(pipeline_id: int):
+    """Delete an abandoned pipeline and redirect to the pipeline list."""
+    delete_pipeline_record(DB_PATH, pipeline_id)
+    return RedirectResponse("/apply", status_code=303)
 
 
 # ---------------------------------------------------------------------------

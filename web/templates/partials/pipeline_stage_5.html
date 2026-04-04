@@ -1,0 +1,57 @@
+<div class="card">
+  <h2 style="margin-top: 0;">Record your application</h2>
+  <p class="text-muted" style="margin-bottom: 1.5rem;">
+    Submit your application on the company website, then come back here to record it.
+  </p>
+
+  <form method="post" action="/apply/{{ pipeline.id }}/complete">
+    <label for="company" style="font-weight: 600;">Company *</label>
+    <input type="text" id="company" name="company" required
+           value="{{ pipeline.company }}"
+           style="width: 100%; margin-top: 0.4rem; margin-bottom: 1rem;">
+
+    <label for="role_title" style="font-weight: 600;">Role title *</label>
+    <input type="text" id="role_title" name="role_title" required
+           value="{{ pipeline.job_title }}"
+           style="width: 100%; margin-top: 0.4rem; margin-bottom: 1rem;">
+
+    <label for="job_url" style="font-weight: 600;">Job URL</label>
+    <input type="url" id="job_url" name="job_url"
+           placeholder="https://..."
+           style="width: 100%; margin-top: 0.4rem; margin-bottom: 1rem;">
+
+    <label for="date_applied" style="font-weight: 600;">Date applied *</label>
+    <input type="date" id="date_applied" name="date_applied" required
+           value="{{ today }}"
+           style="width: 100%; margin-top: 0.4rem; margin-bottom: 1rem;">
+
+    {% if pipeline.resume_filename %}
+    <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-banner);
+                border: 1px solid var(--border-banner); border-radius: 6px; font-size: 0.9rem;">
+      Resume: <a href="/resume/download/{{ pipeline.resume_filename }}" target="_blank">
+        {{ pipeline.resume_filename }} ↗
+      </a>
+    </div>
+    {% endif %}
+
+    {% if pipeline.cover_letter_id and not pipeline.skipped_cover_letter %}
+    <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-banner);
+                border: 1px solid var(--border-banner); border-radius: 6px; font-size: 0.9rem;">
+      Cover letter saved — <a href="/cover-letter/history" target="_blank">view in history ↗</a>
+    </div>
+    {% endif %}
+
+    <label for="referral_contacts" style="font-weight: 600;">People I know there</label>
+    <input type="text" id="referral_contacts" name="referral_contacts"
+           placeholder="e.g. Jane Smith (recruiter)"
+           style="width: 100%; margin-top: 0.4rem; margin-bottom: 1rem;">
+
+    <label for="notes" style="font-weight: 600;">Notes</label>
+    <textarea id="notes" name="notes" rows="4"
+              style="width: 100%; margin-top: 0.4rem; margin-bottom: 1.5rem;"></textarea>
+
+    <button type="submit" class="btn btn-primary">
+      I've submitted — record this application
+    </button>
+  </form>
+</div>

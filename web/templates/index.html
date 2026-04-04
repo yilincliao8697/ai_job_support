@@ -62,7 +62,14 @@
   <div class="card">
     <h2>Applications</h2>
     <p>Log and track every application you've sent.</p>
-    <a href="/applications" class="card-link">Open →</a>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: auto;">
+      <a href="/applications" class="card-link" style="margin-top: 0;">View all →</a>
+      <form method="post" action="/apply/start" style="margin: 0;">
+        <button type="submit" class="btn btn-primary" style="font-size: 0.9rem;">
+          Start guided apply
+        </button>
+      </form>
+    </div>
   </div>
 </div>
 
