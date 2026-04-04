@@ -1,8 +1,42 @@
 # AI Job Hunting Assistant
 
-A personal AI-powered job hunting assistant demonstrating production agentic LLM patterns — multi-model routing, live web search tool use, structured output extraction, and iterative human-in-the-loop revision workflows.
+A personal AI-powered job hunting assistant — tracks applications, tailors resumes, generates cover letters, researches companies, and keeps you motivated. Runs entirely on your own machine.
+
+Also a portfolio piece demonstrating production agentic LLM patterns: multi-model routing, live web search tool use, structured output extraction, and iterative human-in-the-loop revision workflows.
 
 Built with FastAPI + HTMX for a calm, focused UX. No feeds, no notifications — everything on demand.
+
+---
+
+## Getting started (Docker)
+
+**Requirements:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (free, Mac / Windows / Linux)
+
+**1. Run the app**
+
+```bash
+docker run -p 8000:8000 -v ~/my-job-data:/mnt/data ghcr.io/yilincliao8697/ai-job-support:latest
+```
+
+Your data (database, resumes, CV) is stored in `~/my-job-data` on your own machine and persists across restarts.
+
+**2. Open the app**
+
+Go to **http://localhost:8000**
+
+**3. Add your API key**
+
+Go to **Settings** and paste your [Anthropic API key](https://console.anthropic.com/). It's stored locally in your database — it never leaves your machine.
+
+That's it. No accounts, no monthly cost, no configuration files.
+
+**Alternative: docker-compose**
+
+Download [`docker-compose.yml`](docker-compose.yml) to a folder, then:
+
+```bash
+docker-compose up -d
+```
 
 ---
 
@@ -22,6 +56,9 @@ This project was built as a portfolio piece for AI engineering roles. The intere
 
 ## Features
 
+### Guided Apply Pipeline
+Step-by-step flow that walks you through a full application: paste the JD → review your CV → generate a tailored resume → generate a cover letter (optional) → record the application. Progress is tracked with a stepper UI; you can navigate back freely without losing completed stages.
+
 ### Resume Tailor
 Paste a job description → Claude (`claude-sonnet-4-6`) selects relevant experience, rewrites bullet points to mirror JD language, and renders a polished PDF.
 
@@ -29,12 +66,21 @@ Paste a job description → Claude (`claude-sonnet-4-6`) selects relevant experi
 - **Live edit mode** — edit any section inline after generation and re-render the PDF without an LLM call
 - **Resume history** — full revision chain stored in SQLite; revisit and branch any prior version
 
+### Cover Letter Generator
+Paste a JD → Claude writes a tailored 3-paragraph cover letter in your chosen tone (professional, warm, enthusiastic). Add a personal note for extra context. Saved to history.
+
+### Master CV Editor
+Edit your source CV as YAML directly in the browser (CodeMirror editor), or upload an existing PDF and Claude extracts it into the YAML schema automatically.
+
 ### Market Intelligence
 Paste a JD → Claude expands it into 5–10 similar companies you may have missed. Click any company on your watchlist to fetch a structured **Company Pulse**:
 
 - Recent funding, headcount direction, layoff news, open roles
 - Powered by Claude's `web_search` tool with a multi-turn loop to handle tool-use-only stop reasons
 - Pulse results cached in SQLite; refresh on demand
+
+### LinkedIn Post Generator
+Pick a category (project, insight, learning, etc.) and tone → Claude drafts three post options. Paste a source URL and Claude summarises it into the post. Regenerate individual slots without losing the others.
 
 ### Application Tracker
 Full CRUD for job applications with status tracking. Contextual AI moments are woven in:
@@ -56,11 +102,17 @@ ai_job_support/
 ├── agents/
 │   ├── market_intelligence.py   # Company Expander + Pulse (Sonnet + web_search tool)
 │   ├── resume_tailor.py         # CV tailoring + feedback summarisation (Sonnet + Haiku)
+│   ├── cover_letter.py          # Cover letter generation (Sonnet)
+│   ├── linkedin_post.py         # LinkedIn post drafting (Sonnet)
+│   ├── cv_from_pdf.py           # PDF text extraction → YAML (Sonnet)
 │   └── wellbeing.py             # Encouragement + reframes (Haiku)
 ├── core/
 │   ├── cv_store.py              # Load/parse master_cv.yaml
 │   ├── tracker.py               # SQLite CRUD for applications
 │   ├── resume_store.py          # Resume history + revision chain
+│   ├── cover_letter_store.py    # Cover letter history
+│   ├── pipeline_store.py        # Guided apply pipeline state
+│   ├── settings_store.py        # App settings (API key storage)
 │   ├── pdf_renderer.py          # Jinja2 → HTML → WeasyPrint → PDF
 │   └── watchlist.py             # Target companies CRUD
 ├── web/
@@ -70,8 +122,8 @@ ai_job_support/
 ├── resume_templates/
 │   └── default.html.j2          # Resume visual design
 ├── data/
-│   ├── master_cv.yaml           # Your career data — edit directly
-│   ├── target_companies.yaml    # Watchlist seed data
+│   ├── master_cv.yaml           # Your career data (gitignored)
+│   ├── master_cv.example.yaml   # Template / placeholder
 │   ├── resumes/                 # Generated PDFs (gitignored)
 │   └── jobs.db                  # SQLite (gitignored)
 └── tests/                       # Pytest suite
@@ -95,35 +147,31 @@ ai_job_support/
 
 ---
 
-## Setup
+## Run from source
 
-**Prerequisites:** Python 3.11+, an Anthropic API key
+**Prerequisites:** Python 3.11+
 
 ```bash
-git clone <repo-url>
-cd ai_job_support
+git clone https://github.com/yilincliao8697/ai-job-support
+cd ai-job-support
 
 python -m venv venv
 source venv/bin/activate
 
 pip install -r requirements.txt
+
+cp data/master_cv.example.yaml data/master_cv.yaml
+
+uvicorn web.main:app --reload
 ```
 
-Create a `.env` file:
+Open `http://localhost:8000`, then go to **Settings** to add your Anthropic API key.
+
+Alternatively, set it via a `.env` file:
 
 ```bash
 ANTHROPIC_API_KEY=your_key_here
 ```
-
-Edit `data/master_cv.yaml` with your career history.
-
-Run the app:
-
-```bash
-uvicorn web.main:app --reload
-```
-
-Open `http://localhost:8000`.
 
 ---
 
@@ -140,14 +188,20 @@ pytest tests/
 | Route | Description |
 |---|---|
 | `/` | Dashboard |
-| `/intelligence` | Company Expander — paste a JD, get similar companies |
-| `/companies` | Watchlist browser grouped by sector |
-| `/companies/:id` | Company Pulse view |
+| `/apply/start` | Start the guided apply pipeline |
+| `/applications` | Application tracker (includes in-progress pipelines) |
 | `/resume` | Generate a tailored resume PDF |
 | `/resume/history` | Resume history + revision tree |
 | `/resume/:id/edit` | Live edit a generated resume |
-| `/applications` | Application tracker |
+| `/cover-letter` | Generate a cover letter |
+| `/cover-letter/history` | Saved cover letters |
+| `/cv/edit` | Edit master CV as YAML or upload a PDF |
+| `/intelligence` | Company Expander — paste a JD, get similar companies |
+| `/companies` | Watchlist browser grouped by sector |
+| `/companies/:id` | Company Pulse view |
+| `/linkedin` | LinkedIn post generator |
 | `/encouragement` | On-demand wellbeing support |
+| `/settings` | API key and app settings |
 
 ---
 
@@ -163,15 +217,19 @@ pytest tests/
 
 ---
 
-## Deployment
+## Data & privacy
 
-Designed for Render or Railway with a persistent disk for SQLite and generated PDFs.
+Everything runs locally. Your CV, resumes, applications, and API key are stored in a SQLite database and local files on your own machine (or Docker volume). Nothing is sent to any server except Anthropic's API when you use AI features.
 
-Environment variables:
+---
+
+## Environment variables
+
+All optional — API key can be set via the Settings page instead.
 
 | Variable | Default | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | Required |
+| `ANTHROPIC_API_KEY` | — | Overrides the in-app key if set |
 | `DB_PATH` | `data/jobs.db` | SQLite path |
 | `CV_PATH` | `data/master_cv.yaml` | Master CV path |
 | `RESUMES_DIR` | `data/resumes` | PDF output directory |

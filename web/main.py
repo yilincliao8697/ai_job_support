@@ -57,6 +57,9 @@ from core.pipeline_store import (
     update_pipeline, advance_pipeline_stage, list_active_pipelines,
     complete_pipeline, delete_pipeline as delete_pipeline_record,
 )
+from core.settings_store import (
+    init_settings_table, get_setting, set_setting, delete_setting,
+)
 
 load_dotenv()
 
@@ -93,8 +96,20 @@ migrate_resumes(DB_PATH)
 init_cover_letters_table(DB_PATH)
 init_pipelines_table(DB_PATH)
 migrate_pipelines(DB_PATH)
+init_settings_table(DB_PATH)
+
+# Load API key from DB into env if not already set via environment
+if not os.getenv("ANTHROPIC_API_KEY"):
+    _db_key = get_setting(DB_PATH, "anthropic_api_key")
+    if _db_key:
+        os.environ["ANTHROPIC_API_KEY"] = _db_key
 
 templates.env.filters["format_date"] = _format_date
+
+
+def needs_key() -> bool:
+    """Return True if no Anthropic API key is available."""
+    return not bool(os.getenv("ANTHROPIC_API_KEY"))
 
 
 # ---------------------------------------------------------------------------
@@ -308,6 +323,8 @@ async def intelligence_page(request: Request):
 @app.post("/intelligence/expand")
 async def intelligence_expand(request: Request, job_description: str = Form(...)):
     """Expand a JD into similar companies and return HTMX partial."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     companies = expand_companies(job_description)
     return templates.TemplateResponse(
         request, "partials/expander_results.html", {"companies": companies}
@@ -351,6 +368,8 @@ async def company_pulse_page(request: Request, company_id: int):
 @app.post("/companies/{company_id}/pulse")
 async def company_pulse_refresh(request: Request, company_id: int):
     """Fetch a fresh Company Pulse and return HTMX partial."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     companies = list_companies(DB_PATH)
     company = next((c for c in companies if c.id == company_id), None)
     if company is None:
@@ -443,6 +462,8 @@ async def resume_page(request: Request):
 @app.post("/resume/generate")
 async def resume_generate(request: Request, job_description: str = Form(...)):
     """Tailor the CV to the JD, render a PDF, and return an HTMX partial."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     cv_text = get_cv_as_text(CV_PATH)
     tailored = tailor_cv(cv_text, job_description)
     filename = render_resume_pdf(tailored, RESUMES_DIR)
@@ -573,6 +594,8 @@ async def resume_revise(
     feedback: str = Form(...),
 ):
     """Revise a previously generated resume based on user feedback. Returns updated result card partial."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     parent = get_resume(DB_PATH, parent_resume_id)
     if parent is None:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -624,6 +647,8 @@ async def resume_revise_from_history(
     feedback: str = Form(...),
 ):
     """Revision triggered from the history page. Redirects to /resume/history on success."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     parent = get_resume(DB_PATH, parent_resume_id)
     if parent is None:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -797,6 +822,8 @@ async def cv_edit_page(request: Request, saved: int = 0):
 @app.post("/cv/upload-pdf")
 async def cv_upload_pdf(request: Request, pdf: UploadFile = File(default=None)):
     """Convert an uploaded CV PDF to YAML and write to master_cv.yaml."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     if pdf is None or not pdf.filename:
         return RedirectResponse("/cv/edit", status_code=303)
 
@@ -885,6 +912,8 @@ async def linkedin_generate(
     tone: str = Form("insightful"),
 ):
     """Generate 3 LinkedIn post options. Returns the posts partial for HTMX swap."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     cv_context = get_linkedin_context(CV_PATH)
     url_content = fetch_url_content(url) if url.strip() else ""
     posts = generate_linkedin_posts(cv_context, category, topic, tone, url_content)
@@ -905,6 +934,8 @@ async def linkedin_regenerate(
     slot: int = Form(0),
 ):
     """Regenerate a single post slot. Returns one post slot partial for HTMX swap."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     cv_context = get_linkedin_context(CV_PATH)
     url_content = fetch_url_content(url) if url.strip() else ""
     post = regenerate_linkedin_post(cv_context, category, topic, tone, url_content)
@@ -933,8 +964,53 @@ async def encouragement_page(request: Request):
 @app.post("/encouragement")
 async def encouragement_post(user_message: str = Form("")):
     """Return Claude's encouragement as an HTMX partial."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     message = get_on_demand_encouragement(user_message)
     return f"<p style='margin:0; line-height:1.7;'>{message}</p>"
+
+
+# ---------------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------------
+
+@app.get("/settings")
+async def settings_page(request: Request):
+    """Render the settings page."""
+    stored_key = get_setting(DB_PATH, "anthropic_api_key")
+    masked = None
+    if stored_key:
+        masked = stored_key[:10] + "••••••••" if len(stored_key) > 10 else "••••••••"
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {
+            "masked_key": masked,
+            "has_key": bool(stored_key or os.getenv("ANTHROPIC_API_KEY")),
+            "from_env": bool(os.getenv("ANTHROPIC_API_KEY") and not stored_key),
+            "needs_key": request.query_params.get("needs_key") == "1",
+            "saved": request.query_params.get("saved") == "1",
+        },
+    )
+
+
+@app.post("/settings")
+async def settings_save(api_key: str = Form(...)):
+    """Save the Anthropic API key to the DB and activate it immediately."""
+    api_key = api_key.strip()
+    if api_key:
+        set_setting(DB_PATH, "anthropic_api_key", api_key)
+        os.environ["ANTHROPIC_API_KEY"] = api_key
+    return RedirectResponse("/settings?saved=1", status_code=303)
+
+
+@app.post("/settings/clear-key")
+async def settings_clear_key():
+    """Remove the stored API key."""
+    delete_setting(DB_PATH, "anthropic_api_key")
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+    return RedirectResponse("/settings", status_code=303)
 
 
 # ---------------------------------------------------------------------------
@@ -961,6 +1037,8 @@ async def cover_letter_generate(
     personal_note: str = Form(""),
 ):
     """Generate a cover letter and save it. HTMX partial response."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     cv_text = get_cv_as_text(CV_PATH)
     content = generate_cover_letter(
         job_description=job_description,
@@ -1142,6 +1220,8 @@ async def pipeline_select_resume(pipeline_id: int, resume_id: int = Form(...)):
 @app.post("/apply/{pipeline_id}/generate-resume")
 async def pipeline_generate_resume(request: Request, pipeline_id: int):
     """Generate a tailored resume inline, link it to the pipeline, stay on stage 3."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     pipeline = get_pipeline(DB_PATH, pipeline_id)
     if pipeline is None:
         raise HTTPException(status_code=404, detail="Pipeline not found")
@@ -1173,6 +1253,8 @@ async def pipeline_advance_from_resume(pipeline_id: int):
 @app.post("/apply/{pipeline_id}/generate-cover-letter")
 async def pipeline_generate_cover_letter(request: Request, pipeline_id: int):
     """Generate a cover letter inline, link it to the pipeline, stay on stage 4."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     pipeline = get_pipeline(DB_PATH, pipeline_id)
     if pipeline is None:
         raise HTTPException(status_code=404, detail="Pipeline not found")

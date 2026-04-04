@@ -18,7 +18,7 @@
     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem;">
       {% for key, label in categories.items() %}
       <label class="category-tile" style="display: flex; align-items: center; gap: 0.5rem;
-                    padding: 0.6rem 0.75rem; border: 1px solid #ddd; border-radius: 6px;
+                    padding: 0.6rem 0.75rem; border: 1px solid var(--border-input); border-radius: 6px;
                     cursor: pointer; transition: border-color 0.15s, background 0.15s;">
         <input type="radio" name="category" value="{{ key }}"
                {% if key == "tech_tool" %}checked{% endif %}
@@ -34,7 +34,7 @@
     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem;">
       {% for key, label in tones.items() %}
       <label class="tone-tile" style="display: flex; align-items: center; gap: 0.5rem;
-                    padding: 0.6rem 0.75rem; border: 1px solid #ddd; border-radius: 6px;
+                    padding: 0.6rem 0.75rem; border: 1px solid var(--border-input); border-radius: 6px;
                     cursor: pointer; transition: border-color 0.15s, background 0.15s;">
         <input type="radio" name="tone" value="{{ key }}"
                {% if key == "insightful" %}checked{% endif %}
@@ -84,8 +84,10 @@ function initRadioTiles(name) {
   const radios = document.querySelectorAll(`input[name="${name}"]`);
   function update() {
     radios.forEach(r => {
-      r.closest('label').style.borderColor = r.checked ? '#4a6cf7' : '#ddd';
-      r.closest('label').style.background = r.checked ? '#f0f4ff' : '';
+      const style = r.closest('label').style;
+      style.borderColor = r.checked ? 'var(--link)' : 'var(--border-input)';
+      style.background = r.checked ? 'var(--bg-banner)' : 'var(--bg-card)';
+      style.color = r.checked ? 'var(--text)' : '';
     });
   }
   radios.forEach(r => r.addEventListener('change', update));

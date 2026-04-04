@@ -1,0 +1,8 @@
+services:
+  app:
+    image: ghcr.io/yilincliao8697/ai-job-support:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ~/my-job-data:/mnt/data
+    restart: unless-stopped
