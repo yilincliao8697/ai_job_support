@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Cover Letter — AI Job Support{% endblock %}
+
+{% block content %}
+<h1>Cover Letter Generator</h1>
+<p class="text-muted" style="margin-top: 0.25rem; margin-bottom: 2rem;">
+  Paste a job description. Get a tailored cover letter to copy and adapt.
+</p>
+
+<form hx-post="/cover-letter/generate"
+      hx-target="#cover-letter-result"
+      hx-swap="innerHTML"
+      hx-indicator="#generate-spinner">
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+    <div>
+      <label for="job_title" style="font-weight: 600;">Job title</label>
+      <input type="text" id="job_title" name="job_title"
+             placeholder="e.g. Senior ML Engineer"
+             style="width: 100%; margin-top: 0.4rem;">
+    </div>
+    <div>
+      <label for="company" style="font-weight: 600;">Company</label>
+      <input type="text" id="company" name="company"
+             placeholder="e.g. Acme Corp"
+             style="width: 100%; margin-top: 0.4rem;">
+    </div>
+  </div>
+
+  <div style="margin-bottom: 1rem;">
+    <label for="job_description" style="font-weight: 600;">Job description</label>
+    <textarea id="job_description" name="job_description" rows="10"
+              placeholder="Paste the full job description here..."
+              style="width: 100%; margin-top: 0.4rem;" required></textarea>
+  </div>
+
+  <fieldset style="border: none; padding: 0; margin: 0 0 1rem;">
+    <legend style="font-weight: 600; margin-bottom: 0.75rem;">Tone</legend>
+    <div style="display: flex; gap: 0.5rem;">
+      {% for key, label in tones.items() %}
+      <label style="display: flex; align-items: center; gap: 0.5rem;
+                    padding: 0.6rem 0.75rem; border: 1px solid #ddd; border-radius: 6px;
+                    cursor: pointer; transition: border-color 0.15s, background 0.15s;">
+        <input type="radio" name="tone" value="{{ key }}"
+               {% if key == "professional" %}checked{% endif %}
+               style="margin: 0;">
+        {{ label }}
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <div style="margin-bottom: 1.5rem;">
+    <label for="personal_note" style="font-weight: 600;">
+      Personal note
+      <span style="font-weight: 400; color: #888;">(optional — e.g. "I know someone at this company" or "emphasise leadership")</span>
+    </label>
+    <input type="text" id="personal_note" name="personal_note"
+           placeholder="Any extra context for Claude..."
+           style="width: 100%; margin-top: 0.4rem;">
+  </div>
+
+  <button type="submit" class="btn btn-primary">Generate cover letter</button>
+  <span id="generate-spinner" class="htmx-indicator" style="margin-left: 0.75rem; color: #888;">
+    Generating…
+  </span>
+</form>
+
+<div id="cover-letter-result" style="margin-top: 2rem;"></div>
+
+{% endblock %}

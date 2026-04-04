@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Cover Letter History — AI Job Support{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+  <h1 style="margin: 0;">Cover Letter History</h1>
+  <a href="/cover-letter" class="btn btn-primary">New cover letter</a>
+</div>
+
+{% if letters %}
+<div class="card" style="padding: 0; overflow: hidden;">
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr style="background: var(--bg-secondary); text-align: left;">
+        <th style="padding: 0.75rem 1rem;">Role</th>
+        <th style="padding: 0.75rem 1rem;">Company</th>
+        <th style="padding: 0.75rem 1rem;">Tone</th>
+        <th style="padding: 0.75rem 1rem;">Created</th>
+        <th style="padding: 0.75rem 1rem;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for letter in letters %}
+      <tr id="cl-row-{{ letter.id }}"
+          style="border-top: 1px solid var(--border-color); cursor: pointer;"
+          onclick="toggleExpand({{ letter.id }})">
+        <td style="padding: 0.75rem 1rem;">{{ letter.job_title or "—" }}</td>
+        <td style="padding: 0.75rem 1rem;">{{ letter.company or "—" }}</td>
+        <td style="padding: 0.75rem 1rem; text-transform: capitalize;">{{ letter.tone }}</td>
+        <td style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">
+          {{ letter.created_at | format_date }}
+        </td>
+        <td style="padding: 0.75rem 1rem; text-align: right;"
+            onclick="event.stopPropagation()">
+          <button hx-post="/cover-letter/history/{{ letter.id }}/delete"
+                  hx-target="#cl-row-{{ letter.id }}"
+                  hx-swap="outerHTML"
+                  hx-confirm="Delete this cover letter?"
+                  class="btn btn-danger" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">
+            Delete
+          </button>
+        </td>
+      </tr>
+      <tr id="cl-expand-{{ letter.id }}" style="display: none;">
+        <td colspan="5" style="padding: 0 1rem 1rem;">
+          <textarea rows="12" onclick="event.stopPropagation()"
+                    style="width: 100%; font-family: Georgia, serif; font-size: 0.9rem;
+                           line-height: 1.7; border: 1px solid var(--border-color);
+                           border-radius: 6px; padding: 0.75rem; resize: vertical;">{{ letter.content }}</textarea>
+          <button onclick="copyFromHistory({{ letter.id }}); event.stopPropagation();"
+                  class="btn btn-secondary" style="margin-top: 0.5rem; font-size: 0.85rem;">
+            Copy to clipboard
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function toggleExpand(id) {
+  const row = document.getElementById('cl-expand-' + id);
+  row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+function copyFromHistory(id) {
+  const textarea = document.querySelector('#cl-expand-' + id + ' textarea');
+  navigator.clipboard.writeText(textarea.value).then(function() {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+</script>
+
+{% else %}
+<div class="empty-state">
+  <p>No cover letters yet. <a href="/cover-letter">Generate your first one.</a></p>
+</div>
+{% endif %}
+
+{% endblock %}

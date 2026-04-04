@@ -11,6 +11,14 @@
       const t = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', t);
     })();
+
+    function toggleTheme() {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      const btn = document.getElementById('theme-toggle');
+      if (btn) btn.textContent = next === 'dark' ? '☀' : '☽';
+    }
   </script>
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
 </head>
@@ -19,23 +27,31 @@
     <a href="/" class="logo">AI Job Support</a>
     <nav>
       <span class="nav-dropdown">
-        <a href="/intelligence">Intelligence</a>
+        <a href="/applications">Apply</a>
         <span class="nav-dropdown-menu">
+          <a href="/applications">Applications</a>
+          <a href="/resume">Resume</a>
+          <a href="/cover-letter">Cover Letter</a>
+          <a href="/cv/edit">CV</a>
+        </span>
+      </span>
+      <span class="nav-dropdown">
+        <a href="/intelligence">Research</a>
+        <span class="nav-dropdown-menu">
+          <a href="/intelligence">Intelligence</a>
           <a href="/companies">Companies</a>
         </span>
       </span>
-      <a href="/cv/edit">CV</a>
-      <span class="nav-dropdown">
-        <a href="/resume">Resume</a>
-        <span class="nav-dropdown-menu">
-          <a href="/resume/history">Resume History</a>
-        </span>
-      </span>
-      <a href="/applications">Applications</a>
-      <a href="/linkedin">LinkedIn</a>
+      <a href="/linkedin">Post</a>
       <a href="/encouragement">Boost</a>
+      <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">☽</button>
     </nav>
   </header>
+  <script>
+    // Sync button label to current theme after DOM is ready
+    document.getElementById('theme-toggle').textContent =
+      document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☽';
+  </script>
 
   <main>
     {% block content %}{% endblock %}

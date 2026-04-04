@@ -6,6 +6,7 @@ import os
 import re as _re
 import yaml
 from datetime import date
+from urllib.parse import quote, unquote
 
 from fastapi import FastAPI, Request, Form, HTTPException, UploadFile, File
 from fastapi.responses import RedirectResponse, FileResponse
@@ -46,6 +47,11 @@ from core.resume_store import (
     update_resume_json, update_resume_after_edit, get_tailored_cv,
     toggle_resume_star,
 )
+from agents.cover_letter import TONES as COVER_LETTER_TONES, generate_cover_letter
+from core.cover_letter_store import (
+    init_cover_letters_table, save_cover_letter, list_cover_letters,
+    get_cover_letter, delete_cover_letter,
+)
 
 load_dotenv()
 
@@ -79,6 +85,7 @@ init_db(DB_PATH)
 migrate_watchlist(DB_PATH)
 init_resumes_table(DB_PATH)
 migrate_resumes(DB_PATH)
+init_cover_letters_table(DB_PATH)
 
 templates.env.filters["format_date"] = _format_date
 
@@ -118,7 +125,7 @@ async def dashboard(request: Request):
 async def applications_list(request: Request, show_all: int = 0):
     """List applications — active only by default."""
     active_only = show_all != 1
-    flash = request.cookies.get("flash_encouragement", "")
+    flash = unquote(request.cookies.get("flash_encouragement", ""))
     applications = list_applications(DB_PATH, active_only=active_only)
     response = templates.TemplateResponse(
         request,
@@ -188,7 +195,7 @@ async def applications_new_submit(
         link_application(DB_PATH, resume_id, application_id)
     encouragement = get_encouragement_on_log(company, role_title, USER_BACKGROUND)
     response = RedirectResponse("/applications", status_code=303)
-    response.set_cookie("flash_encouragement", encouragement, max_age=60, httponly=True)
+    response.set_cookie("flash_encouragement", quote(encouragement), max_age=60, httponly=True)
     return response
 
 
@@ -909,6 +916,69 @@ async def encouragement_post(user_message: str = Form("")):
     """Return Claude's encouragement as an HTMX partial."""
     message = get_on_demand_encouragement(user_message)
     return f"<p style='margin:0; line-height:1.7;'>{message}</p>"
+
+
+# ---------------------------------------------------------------------------
+# Cover Letter
+# ---------------------------------------------------------------------------
+
+@app.get("/cover-letter")
+async def cover_letter_page(request: Request):
+    """Render the cover letter generator page."""
+    return templates.TemplateResponse(
+        request,
+        "cover_letter.html",
+        {"tones": COVER_LETTER_TONES},
+    )
+
+
+@app.post("/cover-letter/generate")
+async def cover_letter_generate(
+    request: Request,
+    job_description: str = Form(...),
+    tone: str = Form("professional"),
+    job_title: str = Form(""),
+    company: str = Form(""),
+    personal_note: str = Form(""),
+):
+    """Generate a cover letter and save it. HTMX partial response."""
+    cv_text = get_cv_as_text(CV_PATH)
+    content = generate_cover_letter(
+        job_description=job_description,
+        cv_text=cv_text,
+        tone=tone,
+        personal_note=personal_note,
+    )
+    cover_letter_id = save_cover_letter(
+        DB_PATH,
+        content=content,
+        tone=tone,
+        job_title=job_title,
+        company=company,
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/cover_letter_result.html",
+        {"content": content, "cover_letter_id": cover_letter_id},
+    )
+
+
+@app.get("/cover-letter/history")
+async def cover_letter_history_page(request: Request):
+    """List all saved cover letters."""
+    letters = list_cover_letters(DB_PATH)
+    return templates.TemplateResponse(
+        request,
+        "cover_letter_history.html",
+        {"letters": letters},
+    )
+
+
+@app.post("/cover-letter/history/{cover_letter_id}/delete")
+async def cover_letter_delete(request: Request, cover_letter_id: int):
+    """Delete a cover letter record. HTMX — removes the row from the table."""
+    delete_cover_letter(DB_PATH, cover_letter_id)
+    return ""
 
 
 # ---------------------------------------------------------------------------

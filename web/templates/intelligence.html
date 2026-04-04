@@ -30,7 +30,10 @@
 
   <!-- Watchlist -->
   <div class="card">
-    <h2 style="margin-top:0;">Your watchlist</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+      <h2 style="margin: 0;">Your watchlist</h2>
+      <a href="/companies" class="btn btn-secondary" style="font-size: 0.85rem;">Browse all →</a>
+    </div>
     <div id="watchlist">
       {% include "partials/watchlist.html" %}
     </div>

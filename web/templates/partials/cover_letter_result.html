@@ -1,0 +1,30 @@
+<div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h3 style="margin: 0;">Your cover letter</h3>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <button onclick="copyLetter()" class="btn btn-secondary" style="font-size: 0.85rem;">
+        Copy to clipboard
+      </button>
+      <a href="/cover-letter/history" style="font-size: 0.85rem; color: #888;">
+        View history →
+      </a>
+    </div>
+  </div>
+
+  <textarea id="cover-letter-text" rows="18"
+            style="width: 100%; font-family: Georgia, serif; font-size: 0.95rem;
+                   line-height: 1.7; border: 1px solid #eee; border-radius: 6px;
+                   padding: 1rem; resize: vertical;">{{ content }}</textarea>
+</div>
+
+<script>
+function copyLetter() {
+  const text = document.getElementById('cover-letter-text').value;
+  navigator.clipboard.writeText(text).then(function() {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+</script>
