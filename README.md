@@ -8,80 +8,6 @@ Built with FastAPI + HTMX for a calm, focused UX. No feeds, no notifications —
 
 ---
 
-## Getting started (Docker)
-
-**Requirements:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (free, Mac / Windows / Linux)
-
-**1. Run the app**
-
-```bash
-docker run -p 8000:8000 -v ~/my-job-data:/mnt/data ghcr.io/yilincliao8697/ai-job-support:latest
-```
-
-Your data (database, resumes, CV) is stored in `~/my-job-data` on your own machine and persists across restarts.
-
-**2. Open the app**
-
-Go to **http://localhost:8000**
-
-**3. Add your API key**
-
-Go to **Settings** and paste your [Anthropic API key](https://console.anthropic.com/). It's stored locally in your database — it never leaves your machine.
-
-That's it. No accounts, no monthly cost, no configuration files.
-
-**Alternative: docker-compose**
-
-Download [`docker-compose.yml`](docker-compose.yml) to a folder, then:
-
-```bash
-docker-compose up -d
-```
-
----
-
-## Run from source
-
-**Prerequisites:** Python 3.11+
-
-```bash
-git clone https://github.com/yilincliao8697/ai-job-support
-cd ai-job-support
-
-python -m venv venv
-source venv/bin/activate
-
-pip install -r requirements.txt
-
-cp data/master_cv.example.yaml data/master_cv.yaml
-
-uvicorn web.main:app --reload
-```
-
-Open `http://localhost:8000`, then go to **Settings** to add your Anthropic API key.
-
-Alternatively, set it via a `.env` file:
-
-```bash
-ANTHROPIC_API_KEY=your_key_here
-```
-
----
-
-## How It Works
-
-The interesting engineering is in the agents layer:
-
-| Pattern | Where |
-|---|---|
-| **Tool use / web search** | `agents/market_intelligence.py` — Claude calls `web_search` to gather live company data, handles multi-turn tool loops |
-| **Structured output extraction** | Both agent modules: Claude returns typed JSON; the app validates schema and deserializes into dataclasses |
-| **Multi-model routing** | Sonnet for quality-sensitive tasks (resume, company pulse); Haiku for short, latency-sensitive outputs (encouragement, feedback summarization) |
-| **Iterative revision with accumulated context** | Resume tailor chains multiple feedback rounds into a numbered revision brief, passed back to Claude on each call |
-| **Prompt engineering** | Role assignment, explicit output schemas, and instruction blocks in every system prompt |
-
----
-
 ## Features
 
 ### Guided Apply Pipeline
@@ -120,6 +46,80 @@ On-demand encouragement page. Accepts free-text input for contextual responses, 
 
 ### Dashboard
 Effort chart (applications by date), "one thing today" AI suggestion, and nav cards for all modules.
+
+---
+
+## How It Works
+
+The interesting engineering is in the agents layer:
+
+| Pattern | Where |
+|---|---|
+| **Tool use / web search** | `agents/market_intelligence.py` — Claude calls `web_search` to gather live company data, handles multi-turn tool loops |
+| **Structured output extraction** | Both agent modules: Claude returns typed JSON; the app validates schema and deserializes into dataclasses |
+| **Multi-model routing** | Sonnet for quality-sensitive tasks (resume, company pulse); Haiku for short, latency-sensitive outputs (encouragement, feedback summarization) |
+| **Iterative revision with accumulated context** | Resume tailor chains multiple feedback rounds into a numbered revision brief, passed back to Claude on each call |
+| **Prompt engineering** | Role assignment, explicit output schemas, and instruction blocks in every system prompt |
+
+---
+
+## Getting started (Docker)
+
+**Requirements:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (free, Mac / Windows / Linux)
+
+**1. Run the app**
+
+```bash
+docker run -p 8000:8000 -v ~/my-job-data:/mnt/data ghcr.io/yilincliao8697/ai-job-support:latest
+```
+
+Your data (database, resumes, CV) is stored in `~/my-job-data` on your own machine and persists across restarts.
+
+**2. Open the app**
+
+Go to **http://localhost:8000**
+
+**3. Add your API key**
+
+Go to **Settings** and paste your [Anthropic API key](https://console.anthropic.com/). It's stored locally in your database — it never leaves your machine.
+
+That's it. No accounts, no monthly cost, no configuration files.
+
+**Alternative: docker-compose**
+
+Download [`docker-compose.yml`](docker-compose.yml) to a folder, then:
+
+```bash
+docker-compose up -d
+```
+
+---
+
+## Development setup
+
+**Prerequisites:** Python 3.11+
+
+```bash
+git clone https://github.com/yilincliao8697/ai-job-support
+cd ai-job-support
+
+python -m venv venv
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+cp data/master_cv.example.yaml data/master_cv.yaml
+
+uvicorn web.main:app --reload
+```
+
+Open `http://localhost:8000`, then go to **Settings** to add your Anthropic API key.
+
+Alternatively, set it via a `.env` file:
+
+```bash
+ANTHROPIC_API_KEY=your_key_here
+```
 
 ---
 
@@ -175,36 +175,6 @@ ai_job_support/
 
 ---
 
-## Running Tests
-
-```bash
-pytest tests/
-```
-
----
-
-## Routes
-
-| Route | Description |
-|---|---|
-| `/` | Dashboard |
-| `/apply/start` | Start the guided apply pipeline |
-| `/applications` | Application tracker (includes in-progress pipelines) |
-| `/resume` | Generate a tailored resume PDF |
-| `/resume/history` | Resume history + revision tree |
-| `/resume/:id/edit` | Live edit a generated resume |
-| `/cover-letter` | Generate a cover letter |
-| `/cover-letter/history` | Saved cover letters |
-| `/cv/edit` | Edit master CV as YAML or upload a PDF |
-| `/intelligence` | Company Expander — paste a JD, get similar companies |
-| `/companies` | Watchlist browser grouped by sector |
-| `/companies/:id` | Company Pulse view |
-| `/linkedin` | LinkedIn post generator |
-| `/encouragement` | On-demand wellbeing support |
-| `/settings` | API key and app settings |
-
----
-
 ## Implementation Notes
 
 **Model routing rationale:** Sonnet is used where output quality directly affects user decisions (resume copy, company research synthesis). Haiku handles high-frequency, short-output tasks where latency and cost matter more — encouragement messages fire on every application log, and feedback summarisation is a preprocessing step within a larger flow.
@@ -233,4 +203,33 @@ All optional — API key can be set via the Settings page instead.
 | `DB_PATH` | `data/jobs.db` | SQLite path |
 | `CV_PATH` | `data/master_cv.yaml` | Master CV path |
 | `RESUMES_DIR` | `data/resumes` | PDF output directory |
-| `USER_BACKGROUND` | `"experienced ML engineer..."` | Used in encouragement prompts |
+
+---
+
+## Running Tests
+
+```bash
+pytest tests/
+```
+
+---
+
+## Routes
+
+| Route | Description |
+|---|---|
+| `/` | Dashboard |
+| `/apply/start` | Start the guided apply pipeline |
+| `/applications` | Application tracker (includes in-progress pipelines) |
+| `/resume` | Generate a tailored resume PDF |
+| `/resume/history` | Resume history + revision tree |
+| `/resume/:id/edit` | Live edit a generated resume |
+| `/cover-letter` | Generate a cover letter |
+| `/cover-letter/history` | Saved cover letters |
+| `/cv/edit` | Edit master CV as YAML or upload a PDF |
+| `/intelligence` | Company Expander — paste a JD, get similar companies |
+| `/companies` | Watchlist browser grouped by sector |
+| `/companies/:id` | Company Pulse view |
+| `/linkedin` | LinkedIn post generator |
+| `/encouragement` | On-demand wellbeing support |
+| `/settings` | API key and app settings |
