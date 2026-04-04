@@ -134,7 +134,7 @@ async def dashboard(request: Request):
             "one_thing_today": get_one_thing_today(
                 [vars(a) for a in list_applications(DB_PATH, active_only=True)],
                 [],
-            ),
+            ) if not needs_key() else None,
         },
     )
 
@@ -227,9 +227,10 @@ async def applications_new_submit(
     application_id = add_application(DB_PATH, new_app)
     if resume_id:
         link_application(DB_PATH, resume_id, application_id)
-    encouragement = get_encouragement_on_log(company, role_title, USER_BACKGROUND)
     response = RedirectResponse("/applications", status_code=303)
-    response.set_cookie("flash_encouragement", quote(encouragement), max_age=60, httponly=True)
+    if not needs_key():
+        encouragement = get_encouragement_on_log(company, role_title, USER_BACKGROUND)
+        response.set_cookie("flash_encouragement", quote(encouragement), max_age=60, httponly=True)
     return response
 
 
@@ -953,6 +954,8 @@ async def linkedin_regenerate(
 @app.get("/encouragement")
 async def encouragement_page(request: Request):
     """Render the on-demand encouragement page with a default message."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
     default_message = get_on_demand_encouragement()
     return templates.TemplateResponse(
         request,
@@ -1333,9 +1336,10 @@ async def pipeline_complete(
 
     complete_pipeline(DB_PATH, pipeline_id, application_id=application_id)
 
-    encouragement = get_encouragement_on_log(company, role_title, USER_BACKGROUND)
     response = RedirectResponse("/applications", status_code=303)
-    response.set_cookie("flash_encouragement", quote(encouragement), max_age=60, httponly=True)
+    if not needs_key():
+        encouragement = get_encouragement_on_log(company, role_title, USER_BACKGROUND)
+        response.set_cookie("flash_encouragement", quote(encouragement), max_age=60, httponly=True)
     return response
 
 

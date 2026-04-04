@@ -2,7 +2,7 @@
 
 A personal AI-powered job hunting assistant — tracks applications, tailors resumes, generates cover letters, researches companies, and keeps you motivated. Runs entirely on your own machine.
 
-Also a portfolio piece demonstrating production agentic LLM patterns: multi-model routing, live web search tool use, structured output extraction, and iterative human-in-the-loop revision workflows.
+Uses production agentic LLM patterns throughout: multi-model routing, live web search tool use, structured output extraction, and iterative human-in-the-loop revision workflows.
 
 Built with FastAPI + HTMX for a calm, focused UX. No feeds, no notifications — everything on demand.
 
@@ -40,9 +40,27 @@ docker-compose up -d
 
 ---
 
-## What This Demonstrates
+## Publishing a new image
 
-This project was built as a portfolio piece for AI engineering roles. The interesting engineering is in the agents layer:
+After making changes, rebuild and push to update the public image:
+
+```bash
+docker build -t ai-job-support .
+docker tag ai-job-support ghcr.io/yilincliao8697/ai-job-support:latest
+docker push ghcr.io/yilincliao8697/ai-job-support:latest
+```
+
+First-time setup: create a GitHub PAT with `write:packages` scope and log in once:
+
+```bash
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u yilincliao8697 --password-stdin
+```
+
+---
+
+## How It Works
+
+The interesting engineering is in the agents layer:
 
 | Pattern | Where |
 |---|---|
@@ -205,7 +223,7 @@ pytest tests/
 
 ---
 
-## AI Engineering Notes
+## Implementation Notes
 
 **Model routing rationale:** Sonnet is used where output quality directly affects user decisions (resume copy, company research synthesis). Haiku handles high-frequency, short-output tasks where latency and cost matter more — encouragement messages fire on every application log, and feedback summarisation is a preprocessing step within a larger flow.
 
