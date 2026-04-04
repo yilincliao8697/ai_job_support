@@ -40,20 +40,30 @@ docker-compose up -d
 
 ---
 
-## Publishing a new image
+## Run from source
 
-After making changes, rebuild and push to update the public image:
+**Prerequisites:** Python 3.11+
 
 ```bash
-docker build -t ai-job-support .
-docker tag ai-job-support ghcr.io/yilincliao8697/ai-job-support:latest
-docker push ghcr.io/yilincliao8697/ai-job-support:latest
+git clone https://github.com/yilincliao8697/ai-job-support
+cd ai-job-support
+
+python -m venv venv
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+cp data/master_cv.example.yaml data/master_cv.yaml
+
+uvicorn web.main:app --reload
 ```
 
-First-time setup: create a GitHub PAT with `write:packages` scope and log in once:
+Open `http://localhost:8000`, then go to **Settings** to add your Anthropic API key.
+
+Alternatively, set it via a `.env` file:
 
 ```bash
-echo YOUR_GITHUB_PAT | docker login ghcr.io -u yilincliao8697 --password-stdin
+ANTHROPIC_API_KEY=your_key_here
 ```
 
 ---
@@ -162,34 +172,6 @@ ai_job_support/
 | AI — speed tasks | `claude-haiku-4-5-20251001` |
 | PDF generation | WeasyPrint |
 | Database | SQLite (no ORM) |
-
----
-
-## Run from source
-
-**Prerequisites:** Python 3.11+
-
-```bash
-git clone https://github.com/yilincliao8697/ai-job-support
-cd ai-job-support
-
-python -m venv venv
-source venv/bin/activate
-
-pip install -r requirements.txt
-
-cp data/master_cv.example.yaml data/master_cv.yaml
-
-uvicorn web.main:app --reload
-```
-
-Open `http://localhost:8000`, then go to **Settings** to add your Anthropic API key.
-
-Alternatively, set it via a `.env` file:
-
-```bash
-ANTHROPIC_API_KEY=your_key_here
-```
 
 ---
 
