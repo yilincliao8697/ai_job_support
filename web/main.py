@@ -116,6 +116,16 @@ def needs_key() -> bool:
 # Dashboard
 # ---------------------------------------------------------------------------
 
+def _safe_one_thing_today(active_applications: list) -> str | None:
+    """Call get_one_thing_today, returning None on any error (network, missing key, etc.)."""
+    if needs_key():
+        return None
+    try:
+        return get_one_thing_today(active_applications, [])
+    except Exception:
+        return None
+
+
 @app.get("/")
 async def dashboard(request: Request):
     """Render the main dashboard with effort chart and module nav cards."""
@@ -131,10 +141,9 @@ async def dashboard(request: Request):
             "chart_data": chart_data,
             "total_applications": total,
             "first_application_date": first_date,
-            "one_thing_today": get_one_thing_today(
-                [vars(a) for a in list_applications(DB_PATH, active_only=True)],
-                [],
-            ) if not needs_key() else None,
+            "one_thing_today": _safe_one_thing_today(
+                [vars(a) for a in list_applications(DB_PATH, active_only=True)]
+            ),
         },
     )
 
