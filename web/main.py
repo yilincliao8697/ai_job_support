@@ -13,6 +13,7 @@ from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from agents.cv_from_pdf import extract_pdf_text, cv_yaml_from_pdf
 from agents.linkedin_post import (
@@ -110,6 +111,21 @@ templates.env.filters["format_date"] = _format_date
 def needs_key() -> bool:
     """Return True if no Anthropic API key is available."""
     return not bool(os.getenv("ANTHROPIC_API_KEY"))
+
+
+class RequireApiKeyMiddleware(BaseHTTPMiddleware):
+    """Redirect to settings if no Anthropic API key is configured."""
+
+    _EXEMPT_PREFIXES = ("/settings", "/static")
+
+    async def dispatch(self, request: Request, call_next):
+        if not any(request.url.path.startswith(p) for p in self._EXEMPT_PREFIXES):
+            if needs_key():
+                return RedirectResponse("/settings?needs_key=1", status_code=303)
+        return await call_next(request)
+
+
+app.add_middleware(RequireApiKeyMiddleware)
 
 
 # ---------------------------------------------------------------------------
@@ -817,7 +833,11 @@ async def resume_edit_save(request: Request, resume_id: int):
 # ---------------------------------------------------------------------------
 
 @app.get("/cv/edit")
-async def cv_edit_page(request: Request, saved: int = 0):
+async def cv_edit_page(
+    request: Request,
+    saved: int = 0,
+    return_to: str | None = None,
+):
     """Render the master CV editor with current YAML content."""
     with open(CV_PATH, "r", encoding="utf-8") as f:
         content = f.read()
@@ -825,7 +845,13 @@ async def cv_edit_page(request: Request, saved: int = 0):
     return templates.TemplateResponse(
         request,
         "cv_edit.html",
-        {"content": content, "saved": saved == 1, "error": None, "cv_exists": cv_exists},
+        {
+            "content": content,
+            "saved": saved == 1,
+            "error": None,
+            "cv_exists": cv_exists,
+            "return_to": return_to,
+        },
     )
 
 

@@ -3,6 +3,11 @@
 {% block title %}Edit CV{% endblock %}
 
 {% block content %}
+{% if return_to %}
+<div style="margin-bottom: 1.25rem;">
+  <a href="{{ return_to }}" class="btn btn-secondary">← Back to application</a>
+</div>
+{% endif %}
 <h1>Edit Master CV</h1>
 <p class="text-muted" style="margin-top: 0.25rem; margin-bottom: 2rem;">
   Raw YAML. Changes affect resume generation and LinkedIn posts immediately.
