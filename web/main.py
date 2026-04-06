@@ -1386,6 +1386,73 @@ async def pipeline_delete(pipeline_id: int):
 
 
 # ---------------------------------------------------------------------------
+# Role Suggestions
+# ---------------------------------------------------------------------------
+
+def _get_role_suggestions_cache(db_path: str) -> tuple[list[dict] | None, str | None]:
+    """Return (suggestions_list, generated_at_iso) from the settings cache, or (None, None)."""
+    raw = get_setting(db_path, "role_suggestions")
+    generated_at = get_setting(db_path, "role_suggestions_generated_at")
+    if not raw:
+        return None, None
+    try:
+        return json.loads(raw), generated_at
+    except (json.JSONDecodeError, TypeError):
+        return None, None
+
+
+def _set_role_suggestions_cache(db_path: str, suggestions: list, generated_at: str) -> None:
+    """Persist role suggestions to the settings cache."""
+    set_setting(db_path, "role_suggestions", json.dumps(suggestions))
+    set_setting(db_path, "role_suggestions_generated_at", generated_at)
+
+
+@app.get("/roles")
+async def roles_page(request: Request):
+    """Render the role suggestions page with cached results if available."""
+    cached, generated_at = _get_role_suggestions_cache(DB_PATH)
+    return templates.TemplateResponse(
+        request,
+        "roles.html",
+        {
+            "suggestions": cached,
+            "generated_at": generated_at,
+        },
+    )
+
+
+@app.post("/roles/suggest")
+async def roles_suggest(request: Request):
+    """Generate role suggestions from the master CV and cache the result."""
+    if needs_key():
+        return RedirectResponse("/settings?needs_key=1", status_code=303)
+
+    from agents.role_suggester import suggest_roles
+    from datetime import datetime, timezone
+
+    with open(CV_PATH, "r", encoding="utf-8") as f:
+        cv_text = f.read()
+
+    suggestions = suggest_roles(cv_text)
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    suggestions_data = [
+        {"title": s.title, "bullets": s.bullets, "fit_level": s.fit_level}
+        for s in suggestions
+    ]
+    _set_role_suggestions_cache(DB_PATH, suggestions_data, generated_at)
+
+    return templates.TemplateResponse(
+        request,
+        "partials/role_suggestions.html",
+        {
+            "suggestions": suggestions_data,
+            "generated_at": generated_at,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # Delete application
 # ---------------------------------------------------------------------------
 

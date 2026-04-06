@@ -1,0 +1,33 @@
+{% set fit_order = ["obvious", "adjacent", "stretch"] %}
+{% set fit_labels = {"obvious": "Strong match", "adjacent": "Adjacent fit", "stretch": "Stretch"} %}
+{% set fit_colors = {"obvious": "var(--link)", "adjacent": "#7c6fcd", "stretch": "var(--text-muted)"} %}
+
+{% for level in fit_order %}
+  {% set group = suggestions | selectattr("fit_level", "equalto", level) | list %}
+  {% if group %}
+  <div style="margin-bottom: 2rem;">
+    <h2 style="font-size: 1rem; font-weight: 600; color: {{ fit_colors[level] }};
+               margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">
+      {{ fit_labels[level] }}
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+      {% for role in group %}
+      <div class="card" style="margin: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+          <h3 style="margin: 0; font-size: 1rem;">{{ role.title }}</h3>
+          <a href="/intelligence"
+             style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; margin-left: 0.5rem;">
+            Research →
+          </a>
+        </div>
+        <ul style="margin: 0; padding-left: 1.2rem; line-height: 1.7; font-size: 0.9rem; color: var(--text-muted);">
+          {% for bullet in role.bullets %}
+          <li>{{ bullet }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+{% endfor %}

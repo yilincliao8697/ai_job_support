@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Role Fit — AI Job Support{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
+  <h1 style="margin: 0;">Role fit</h1>
+  {% if generated_at %}
+  <span class="text-muted" style="font-size: 0.85rem;">Last generated: {{ generated_at }}</span>
+  {% endif %}
+</div>
+<p class="text-muted" style="margin-top: 0.25rem; margin-bottom: 2rem;">
+  AI reads your master CV and suggests roles you could target — including ones you may not have considered.
+</p>
+
+<div style="margin-bottom: 2rem;">
+  <button
+    class="btn btn-primary"
+    hx-post="/roles/suggest"
+    hx-target="#role-suggestions"
+    hx-swap="innerHTML"
+    hx-indicator="#suggest-spinner"
+    {% if suggestions %}hx-confirm="Regenerate suggestions? This will replace the current results."{% endif %}
+  >
+    {% if suggestions %}Regenerate suggestions{% else %}Suggest roles{% endif %}
+  </button>
+  <span id="suggest-spinner" class="htmx-indicator text-muted" style="margin-left: 0.75rem; font-size: 0.9rem;">
+    Analysing your CV… (up to 30 seconds)
+  </span>
+</div>
+
+<div id="role-suggestions">
+  {% if suggestions %}
+    {% include "partials/role_suggestions.html" %}
+  {% else %}
+  <div class="empty-state">
+    <p>Click "Suggest roles" to analyse your master CV.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
