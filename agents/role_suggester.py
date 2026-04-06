@@ -55,6 +55,12 @@ Return only the JSON array. No preamble, no explanation."""
     )
 
     raw = message.content[0].text.strip()
+    # Strip markdown code fences if Claude wrapped the JSON
+    if raw.startswith("```"):
+        raw = raw.split("```", 2)[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
     data = json.loads(raw)
     return [
         RoleSuggestion(
