@@ -1,6 +1,32 @@
 # AI Job Hunting Assistant
 
-A personal AI-powered job hunting assistant — tracks applications, tailors resumes, generates cover letters, researches companies, and keeps you motivated. Runs entirely on your own machine.
+A personal AI-powered job hunting assistant that runs entirely on your own machine. Point it at a job description and it tailors your resume, writes a cover letter, and tracks the application — all in one flow. Additional tools to help with company research, thinking of LinkedIn posts included, and on-demand encouragement included.
+
+**Try it in 30 seconds** → [Getting started (Docker)](#getting-started-docker)
+
+---
+
+### What you get
+
+**Core flow**
+
+| | |
+|---|---|
+| **Guided apply pipeline** | Paste a JD → tailored resume → cover letter → tracked application, step by step |
+| **Resume tailor** | Claude rewrites your CV to mirror JD language and renders a polished PDF |
+| **Cover letter generator** | 3-paragraph letter in your chosen tone, saved to history |
+| **Application tracker** | Full CRUD with AI encouragement on log and reframes on rejection |
+
+**Side tools**
+
+| | |
+|---|---|
+| **Role fit suggestions** | AI reads your master CV and surfaces roles you may not have considered |
+| **Company research** | Paste a JD → similar companies + live Company Pulse (funding, headcount, open roles) |
+| **LinkedIn post drafts** | Three post options per generation; regenerate individual slots |
+| **Wellbeing layer** | On-demand encouragement, contextual to what you're going through |
+
+---
 
 Uses production agentic LLM patterns throughout: multi-model routing, live web search tool use, structured output extraction, and iterative human-in-the-loop revision workflows.
 
@@ -44,6 +70,9 @@ Full CRUD for job applications with status tracking. Contextual AI moments are w
 ### Wellbeing Layer
 On-demand encouragement page. Accepts free-text input for contextual responses, or delivers a general supportive message. Deliberately not intrusive — one page, on your terms.
 
+### Role Fit
+AI reads your master CV and suggests 6–8 roles you could target, grouped by fit level: **Strong match** (direct experience), **Adjacent fit** (transferable angle), and **Stretch** (aspirational but evidenced). Each suggestion is grounded in specific CV entries — not generic reasoning. Results are cached; refresh when your CV changes.
+
 ### Dashboard
 Effort chart (applications by date), "one thing today" AI suggestion, and nav cards for all modules.
 
@@ -83,7 +112,9 @@ Go to **http://localhost:8000**
 
 Go to **Settings** and paste your [Anthropic API key](https://console.anthropic.com/). It's stored locally in your database — it never leaves your machine.
 
-That's it. No accounts, no monthly cost, no configuration files.
+> **Cost note:** AI features call the Anthropic API, which charges per token. Normal usage (a few resumes and company lookups a day) costs cents. You can monitor usage in the [Anthropic console](https://console.anthropic.com/).
+
+That's it. No accounts, no subscription, no configuration files.
 
 **Alternative: docker-compose**
 
@@ -131,6 +162,7 @@ ai_job_support/
 │   ├── market_intelligence.py   # Company Expander + Pulse (Sonnet + web_search tool)
 │   ├── resume_tailor.py         # CV tailoring + feedback summarisation (Sonnet + Haiku)
 │   ├── cover_letter.py          # Cover letter generation (Sonnet)
+│   ├── role_suggester.py        # Role fit suggestions from master CV (Sonnet)
 │   ├── linkedin_post.py         # LinkedIn post drafting (Sonnet)
 │   ├── cv_from_pdf.py           # PDF text extraction → YAML (Sonnet)
 │   └── wellbeing.py             # Encouragement + reframes (Haiku)
@@ -230,6 +262,7 @@ pytest tests/
 | `/intelligence` | Company Expander — paste a JD, get similar companies |
 | `/companies` | Watchlist browser grouped by sector |
 | `/companies/:id` | Company Pulse view |
+| `/roles` | Role Fit — AI suggests target roles from your master CV |
 | `/linkedin` | LinkedIn post generator |
 | `/encouragement` | On-demand wellbeing support |
 | `/settings` | API key and app settings |
