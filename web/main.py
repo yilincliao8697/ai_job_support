@@ -491,7 +491,18 @@ async def resume_generate(request: Request, job_description: str = Form(...)):
     if needs_key():
         return RedirectResponse("/settings?needs_key=1", status_code=303)
     cv_text = get_cv_as_text(CV_PATH)
-    tailored = tailor_cv(cv_text, job_description)
+    try:
+        tailored = tailor_cv(cv_text, job_description)
+    except ValueError as e:
+        from fastapi.responses import HTMLResponse
+        msg = str(e).split("\nRaw response:\n", 1)
+        raw = msg[1] if len(msg) > 1 else ""
+        display = raw if raw else msg[0]
+        return HTMLResponse(
+            f'<div class="card" style="margin-top:1rem;border-left:3px solid var(--accent);">'
+            f"<p><strong>Could not generate resume.</strong></p>"
+            f"<p style='white-space:pre-wrap'>{display}</p></div>"
+        )
     filename = render_resume_pdf(tailored, RESUMES_DIR)
     tailored_json_str = json.dumps(dataclasses.asdict(tailored))
     resume_id = record_resume(
