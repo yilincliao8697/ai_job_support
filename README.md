@@ -118,7 +118,7 @@ That's it. No accounts, no subscription, no configuration files.
 
 ---
 
-##**Alternative setup: docker-compose**
+### **Alternative setup: docker-compose**
 
 Download [`docker-compose.yml`](docker-compose.yml) to a folder, then:
 
