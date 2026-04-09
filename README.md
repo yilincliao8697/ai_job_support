@@ -1,6 +1,6 @@
 # AI Job Hunting Platform
 
-A personal AI-powered job hunting platform that runs entirely on your own machine. Point it at a job description and it tailors your resume, writes a cover letter, and tracks the application — all in one flow. Additional tools to help with company research, thinking of LinkedIn posts included, and on-demand encouragement included.
+A personal AI-powered job hunting platform that runs entirely on your own machine. Point it at a job description and it tailors your resume, writes a cover letter, and tracks the application — all in one flow. Additional tools to help with company research, thinking of LinkedIn posts, and on-demand encouragement included.
 
 **Try it in 30 seconds** → [Getting started (Docker)](#getting-started-docker)
 
