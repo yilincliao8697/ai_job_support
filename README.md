@@ -116,9 +116,9 @@ Go to **Settings** and paste your [Anthropic API key](https://console.anthropic.
 
 That's it. No accounts, no subscription, no configuration files.
 
+---
 
-
-**Alternative: docker-compose**
+##**Alternative setup: docker-compose**
 
 Download [`docker-compose.yml`](docker-compose.yml) to a folder, then:
 
